@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+  openwebui:
+    image: python:3.11-slim
+    container_name: lamb-openwebui
+    working_dir: /opt/lamb-project/lamb/open-webui/backend
+    environment:
+      - PORT=8080
+      - WEBUI_AUTH_TRUSTED_EMAIL_HEADER=X-User-Email
+      - WEBUI_AUTH_TRUSTED_NAME_HEADER=X-User-Name
+      - PIP_DISABLE_PIP_VERSION_CHECK=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /opt/lamb-project/lamb:/opt/lamb-project/lamb
+    ports:
+      - "8080:8080"
+    depends_on:
+      - openwebui-build
+    command: >
+      sh -lc "
+      echo 'Build folder found, starting backend server...' &&
+      cd /opt/lamb-project/lamb/open-webui/backend &&
+      python -m pip install --upgrade pip &&
+      pip install -r requirements.txt &&
+      mkdir -p data &&
+      uvicorn open_webui.main:app --port $$PORT --host 0.0.0.0 --forwarded-allow-ips '*' --reload"
+
+  openwebui-build:
+    image: node:20-alpine
+    container_name: lamb-openwebui-build
+    working_dir: /opt/lamb-project/lamb/open-webui
+    volumes:
+      - /opt/lamb-project/lamb:/opt/lamb-project/lamb
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=4096
+    command: >
+      sh -lc "if [ ! -d /opt/lamb-project/lamb/open-webui/build ] || [ -z \"$(ls -A /opt/lamb-project/lamb/open-webui/build 2>/dev/null)\" ]; then npm install && npm run build; else echo 'Build folder already exists, skipping build.'; fi"
+    # This service only runs the build step and exits
+
+  frontend-build:
+    image: node:20-alpine
+    container_name: lamb-frontend-build
+    working_dir: /opt/lamb-project/lamb/frontend/svelte-app
+    volumes:
+      - /opt/lamb-project/lamb:/opt/lamb-project/lamb
+    command: >
+      sh -lc "npm install && npm run build"
+    # This service only runs the build step and exits
+
+  kb:
+    image: python:3.11-slim
+    container_name: lamb-kb-server
+    working_dir: /opt/lamb-project/lamb/lamb-kb-server-stable/backend
+    environment:
+      - PIP_DISABLE_PIP_VERSION_CHECK=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /opt/lamb-project/lamb:/opt/lamb-project/lamb
+    ports:
+      - "9090:9090"
+    command: >
+      sh -lc "python -m pip install --upgrade pip &&
+      pip install -r requirements.txt &&
+      mkdir -p static &&
+      (test -f .env || cp .env.example .env) &&
+      python start.py"
+
+  backend:
+    image: python:3.11-slim
+    container_name: lamb-backend
+    working_dir: /opt/lamb-project/lamb/backend
+    environment:
+      - PORT=9099
+      - PIP_DISABLE_PIP_VERSION_CHECK=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      # Override values expected by backend/.env for container networking and absolute paths
+      - OWI_BASE_URL=http://openwebui:8080
+      - OWI_PUBLIC_BASE_URL=http://localhost:8080
+      - OWI_PATH=/opt/lamb-project/lamb/open-webui/backend/data
+      - LAMB_DB_PATH=/opt/lamb-project/lamb
+      - LAMB_KB_SERVER=http://kb:9090
+      # LAMB_KB_SERVER Token should not be overridden
+      # - LAMB_KB_SERVER_TOKEN=0p3n-w3bu!
+    env_file:
+      - /opt/lamb-project/lamb/backend/.env
+    volumes:
+      - /opt/lamb-project/lamb:/opt/lamb-project/lamb
+    ports:
+      - "9099:9099"
+    depends_on:
+      - openwebui
+      - kb
+      - frontend-build
+    command: >
+      sh -lc "python -m pip install --upgrade pip &&
+      pip install -r requirements.txt &&
+      uvicorn main:app --port $$PORT --host 0.0.0.0 --forwarded-allow-ips '*' --reload"
+
+  frontend:
+    image: node:20-alpine
+    container_name: lamb-frontend
+    working_dir: /opt/lamb-project/lamb/frontend/svelte-app
+    environment:
+      - HOST=0.0.0.0
+    volumes:
+      - /opt/lamb-project/lamb:/opt/lamb-project/lamb
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    command: >
+      sh -lc "test -f static/config.js || cp static/config.js.sample static/config.js; \
+      npm install; \
+      npm run dev -- --host 0.0.0.0"
+
+networks:
+  default:
+    name: lamb
