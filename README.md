@@ -1,7 +1,7 @@
 # LAMB - Learning Assistants Manager and Builder
 
 <div align="center">
-  <img src="static/img/lamb_logo.png" alt="LAMB Logo" width="300">
+  <img src="static/lamb_1.png" alt="LAMB Logo" width="300">
   
   **Create AI assistants for education integrated in your Learning Management System**
   
