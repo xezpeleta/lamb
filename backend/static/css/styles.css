@@ -1,0 +1,562 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.6;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Navigation styles */
+.top-nav {
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 0.5rem 2rem;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 60px;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.nav-brand a {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #333;
+    text-decoration: none;
+}
+
+.version-tag {
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.brand-subtitle {
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 400;
+    margin-left: 0.5rem;
+}
+
+.nav-items {
+    display: flex;
+    list-style: none;
+    gap: 2rem;
+    margin: 0 2rem;
+}
+
+.nav-items a {
+    color: #666;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.nav-items a:hover {
+    color: #333;
+    background-color: #f0f0f0;
+}
+
+/* Language selector styles */
+.language-selector {
+    position: relative;
+}
+
+.lang-btn {
+    background: transparent;
+    border: 1px solid #ddd;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.lang-btn .arrow {
+    font-size: 0.8rem;
+}
+
+.lang-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.language-selector:hover .lang-dropdown {
+    display: block;
+}
+
+.lang-dropdown a {
+    display: block;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    color: #666;
+    white-space: nowrap;
+}
+
+.lang-dropdown a:hover {
+    background-color: #f0f0f0;
+}
+
+.lang-dropdown a.active {
+    background-color: #1a365d;
+    color: white;
+}
+
+/* Main container styles */
+.main-container {
+    max-width: 1200px;
+    margin: 80px auto 0;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 80px;
+}
+
+/* Header content styles */
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 3rem;
+    margin-bottom: 3rem;
+    width: 100%;
+    padding-right: 2rem;
+}
+
+.text-content {
+    flex: 1;
+    max-width: 600px;
+    padding-left: 2rem;
+}
+
+.text-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.logo-container {
+    margin-top: 1rem;
+}
+
+.logo-container img {
+    width: 250px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Forms container styles */
+.forms-container {
+    flex: 1;
+    max-width: 400px;
+    position: relative;
+}
+
+/* Login form styles */
+.login-container {
+    width: 100%;
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.login-form h2 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    border-color: #1a365d;
+    outline: none;
+}
+
+/* Footer styles */
+.bottom-bar {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: white;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    padding: 1rem 2rem;
+    z-index: 1000;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.footer-text {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Form footer styles */
+.form-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+    color: #666;
+}
+
+.form-footer a {
+    color: #1a365d;
+    text-decoration: none;
+}
+
+.form-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Signup form specific styles */
+.signup-container {
+    width: 100%;
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.help-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+/* Animation for form switching */
+.login-container, .signup-container {
+    transition: display 0.3s ease;
+}
+
+.auth-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-toggle {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.form-toggle a {
+    color: #1a365d;
+    text-decoration: none;
+}
+
+.error-message {
+    color: #dc3545;
+    padding: 10px;
+    margin: 10px 0;
+    background: #f8d7da;
+    border-radius: 4px;
+}
+
+.success-message {
+    color: #28a745;
+    padding: 10px;
+    margin: 10px 0;
+    background: #d4edda;
+    border-radius: 4px;
+}
+
+/* Assistant Manager Styles */
+.assistants-container {
+    margin-top: 20px;
+    width: 100%;
+    padding: 20px;
+    background-color: #f8f9fa;
+}
+
+.page-container {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 2rem;
+}
+
+.main-content {
+    width: 100%;
+}
+
+/* Form Styles - Match existing form styles */
+form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+    margin-bottom: 1rem;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: #1a365d;
+    outline: none;
+}
+
+.helper-text {
+    display: block;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Response Styles */
+#createAssistantResponse {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    font-family: monospace;
+}
+
+#createAssistantResponse p {
+    margin: 0;
+}
+
+/* Error messages */
+#createAssistantResponse p[style*="color: red"] {
+    color: #dc3545 !important;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 0.75rem;
+    border-radius: 4px;
+}
+
+/* Success messages */
+#createAssistantResponse p[style*="color: green"] {
+    color: #28a745 !important;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    padding: 0.75rem;
+    border-radius: 4px;
+}
+
+/* OWI link styles */
+.owi-link {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    color: #1a365d;
+    text-decoration: none;
+    background: none;
+    border: 1px solid #1a365d;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.owi-link:hover {
+    color: white;
+    background-color: #1a365d;
+}
+
+/* Base button styles */
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+/* Primary button style */
+.primary-button,
+button[type="submit"],
+#createAssistantForm button[type="submit"] {
+    width: 100%;
+    padding: 1rem;
+    background-color: #1a365d;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-top: 1rem;
+}
+
+.primary-button:hover,
+button[type="submit"]:hover,
+#createAssistantForm button[type="submit"]:hover {
+    background-color: #2c4c82;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Also update the focus styles for the form */
+#createAssistantForm input:focus,
+#createAssistantForm textarea:focus,
+#createAssistantForm select:focus {
+    border-color: #1a365d;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(26, 54, 93, 0.1);  /* Subtle focus ring */
+}
+
+/* Update these specific styles */
+.assistants-container button[type="submit"] {
+    background-color: #1a365d;  /* Navy blue */
+    color: white;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 1rem;
+}
+
+.assistants-container button[type="submit"]:hover {
+    background-color: #2c4c82;  /* Lighter navy blue */
+}
+
+/* Also update these general button styles */
+button[type="submit"],
+button {
+    background-color: #1a365d;
+}
+
+button[type="submit"]:hover,
+button:hover {
+    background-color: #2c4c82;
+}
+
+/* And update any remaining blue colors */
+.lang-dropdown a.active {
+    background-color: #1a365d;
+    color: white;
+}
+
+.form-footer a,
+.form-toggle a {
+    color: #1a365d;
+}
+
+.form-group input:focus {
+    border-color: #1a365d;
+}
+
+/* Sidebar styles */
+.sidebar {
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+    padding: 1rem;
+}
+
+.sidebar .menu-item {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #495057;
+}
+
+.sidebar .menu-item:hover {
+    background-color: #f8f9fa;
+}
+
+.sidebar .menu-item.active {
+    background-color: #1a365d;
+    color: white;
+}
+
+/* Content area styles */
+.content-area {
+    padding: 1rem;
+}
+
+.assistant-section {
+    display: none;
+}
+
+.assistant-section.active {
+    display: block;
+}
+
+.assistant-section h2 {
+    margin-bottom: 1.5rem;
+    color: #1a365d;
+}  

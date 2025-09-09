@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MIME Type Test</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('status').innerText = 'Page loaded successfully';
+        });
+    </script>
+    <!-- Load the problematic JS file -->
+    <script src="/static/js/cdn_cache/htmx.org@1.9.6"></script>
+</head>
+<body>
+    <h1>MIME Type Test</h1>
+    <p id="status">Loading...</p>
+    
+    <!-- Test htmx functionality -->
+    <div>
+        <button hx-get="/static/mime_test_response.html" hx-target="#htmx-target">
+            Test HTMX
+        </button>
+        <div id="htmx-target">HTMX results will appear here</div>
+    </div>
+
+    <script>
+        // Check if htmx loaded correctly
+        if (typeof htmx !== 'undefined') {
+            document.getElementById('status').innerText += ' - HTMX loaded successfully!';
+        } else {
+            document.getElementById('status').innerText += ' - HTMX failed to load properly.';
+        }
+    </script>
+</body>
+</html> 
