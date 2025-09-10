@@ -7,6 +7,7 @@
 
   [![Website](https://img.shields.io/badge/Website-lamb--project.org-blue)](http://www.lamb-project.org)
   [![License](https://img.shields.io/badge/license-GPL%20v3-blue.svg)](LICENSE)
+  [![Safe AI in Education](https://img.shields.io/badge/Safe_AI_Education-Manifesto-green)](https://manifesto.safeaieducation.org)
   [![GitHub](https://img.shields.io/badge/GitHub-Lamb--Project-black)](https://github.com/Lamb-Project/lamb)
 </div>
 
@@ -195,7 +196,6 @@ We acknowledge the valuable contributions and research collaboration from the au
 - **David Lopez Alvarez** (Universitat Politècnica de Catalunya, UPC) - Research Contributor
   
 
-
 ## 🙏 Acknowledgments
 
 ### Academic & Institutional Partners
@@ -213,6 +213,38 @@ We acknowledge the valuable contributions and research collaboration from the au
 - **Educational Researchers** - For their valuable feedback and collaboration
 - **Teaching Community** - Early adopters and beta testers
 - **All Contributors** - For their dedication to improving education through technology
+
+## 🛡️ Safe AI in Education Manifesto
+
+LAMB proudly adheres to the **[Safe AI in Education Manifesto](https://manifesto.safeaieducation.org)** - a comprehensive framework for ethical, secure, and educationally-aligned AI deployment.
+
+### 📋 Manifesto TLDR
+
+The Safe AI in Education Manifesto outlines 7 core principles for responsible AI use in education:
+
+1. **Human Oversight** - AI complements, never replaces, human educators
+2. **Privacy Protection** - Student data confidentiality and security
+3. **Educational Alignment** - AI supports institutional strategies and learning objectives
+4. **Didactic Integration** - Seamless integration with teaching methodologies
+5. **Accuracy & Explainability** - Reliable, source-attributed information
+6. **Transparent Interfaces** - Clear communication of AI limitations and capabilities
+7. **Ethical Training** - Models trained with educational ethics and transparency
+
+### 🎯 How LAMB Implements These Principles
+
+**LAMB is designed from the ground up to embody these principles:**
+
+- **🔍 Human Oversight**: All assistants are created and managed by educators with full control over behavior and content
+- **🔒 Privacy-First**: Self-hosted architecture keeps all student data within institutional control
+- **📚 Educational Focus**: Specialized subject tutors stay grounded in educational content and objectives
+- **🧠 Didactic Integration**: Seamless LTI integration with Moodle and other LMS platforms
+- **📖 Source Attribution**: Automatic citations and references to source materials
+- **💬 Transparent Communication**: Clear assistant responses with educational context and limitations
+- **🎓 Ethical Foundation**: Open-source, academically-developed with research collaboration
+
+### 🤝 Our Commitment
+
+As signatories to the manifesto, LAMB's core team members (Marc Alier, Francisco José García-Peñalvo, Maria Jose Casañ, Juanan Pereira, and Ariadna Maria LLorens) are committed to advancing ethical AI in education. LAMB represents a practical implementation of manifesto principles in action.
 
 ## 📧 Contact
 - **Project Leads**: Marc Alier (UPC), Juanan Pereira (UPV/EHU) 
