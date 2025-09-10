@@ -204,10 +204,11 @@ We acknowledge the valuable contributions and research collaboration from the au
   - **Barcelona School of Informatics** (https://fib.upc.edu)
   - **Institut de Ciències de l'Educació - ICE** (https://ice.upc.edu)
   - **Department of Service and Information System Engineering. ESSI** (http://essi.upc.edu)
+- **Universidad de Salamanca** - Grial Research Group 
 
 ### Open Source Dependencies
 - **Open WebUI Project** - (https://github.com/open-webui/) Advanced chatbot web interface integration, and a lot of design descisions borrowed from the openwebui pipelines project. 
-- ** TSugi Project ** (https://www.tsugi.org) Used in early Lamb implementations for LTI provider support. Many thanks to Dr. Chuck (Charles Severance) for his support and inspiration. 
+- **TSugi Project** (https://www.tsugi.org) Used in early Lamb implementations for LTI provider support. Many thanks to Dr. Chuck (Charles Severance) for his support and inspiration. 
 
 
 ### Research & Educational Community
@@ -220,7 +221,7 @@ We acknowledge the valuable contributions and research collaboration from the au
 
 - Universitat Politecnica de Cataluya. Galaxia d'Aprenentatge projecte PROPER, Factulat d'Informatica de Barcelona (2024-2025). 
 - Departament de Recerca i Universitats de la Generalitat de Catalunya through the 2021 SGR 01412 research groups award (2021-2025). 
--Universidad del País Vasco/Euskal Herriko Unibertsitatea through the contract GIU21/037 under the program “Convocatoria para la Concesión de Ayudas a los Grupos de Investigación en la Universidad del País Vasco/Euskal Herriko Unibertsitatea (2021)
+- Universidad del País Vasco/Euskal Herriko Unibertsitatea through the contract GIU21/037 under the program “Convocatoria para la Concesión de Ayudas a los Grupos de Investigación en la Universidad del País Vasco/Euskal Herriko Unibertsitatea (2021)
 
 
 ## 🛡️ Safe AI in Education Manifesto
