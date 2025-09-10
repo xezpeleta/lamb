@@ -189,7 +189,7 @@ We acknowledge the valuable contributions and research collaboration from the au
 - **Marc Alier** (Universitat Politècnica de Catalunya, UPC) - Co-Lead & Principal Researcher
 
 #### Senior Researchers & Academic Collaborators
-- **Francisco José García-Peñalvo** - Corresponding Author & Senior Researcher
+- **Francisco José García-Peñalvo** - Advisor and Senior Researcher
 - **Maria Jose Casañ** (Universitat Politècnica de Catalunya, UPC) - Research Contributor & Developer
 - **Ariadna Maria LLorens** (Universitat Politècnica de Catalunya, UPC) - Research Contributor
 - **Jose Cabré** (Universitat Politècnica de Catalunya, UPC) - Research Contributor 
@@ -244,7 +244,7 @@ The Safe AI in Education Manifesto outlines 7 core principles for responsible AI
 
 ### 🤝 Our Commitment
 
-As signatories to the manifesto, LAMB's core team members (Marc Alier, Francisco José García-Peñalvo, Maria Jose Casañ, Juanan Pereira, and Ariadna Maria LLorens) are committed to advancing ethical AI in education. LAMB represents a practical implementation of manifesto principles in action.
+As signatories to the manifesto, LAMB's core team members are committed to advancing ethical AI in education. LAMB represents a practical implementation of manifesto principles in action.
 
 ## 📧 Contact
 - **Project Leads**: Marc Alier (UPC), Juanan Pereira (UPV/EHU) 
