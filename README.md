@@ -19,7 +19,7 @@ Developed by Marc Alier and Juanan Pereira, professors and researchers at the Un
 ## 🎯 Key Features
 
 ### 🎓 **Specialized Subject Tutors**
-Design assistants that stay strictly within your chosen subject area, ensuring responses are always educationally appropriate and contextually relevant.
+Design assistants that stay grounded on your chosen subject area, ensuring responses are always educationally appropriate and contextually relevant.
 
 ### 📚 **Intelligent Knowledge Ingestion**
 Upload educational materials (PDF, Word, Markdown) and LAMB automatically processes them with:
@@ -50,7 +50,7 @@ Seamlessly integrate with Moodle and other Learning Management Systems through L
 
 
 ### 🌍 **Multilingual Interface**
-Built-in support for Catalan, Spanish, English, and Basque, with easy extensibility for additional languages.  
+Built-in support for Basque, Catalan, Spanish, and English, with easy extensibility for additional languages.  
 
 ### 💾 **Portability & Versioning**
 - Export/import assistants in JSON format
@@ -184,27 +184,30 @@ author = {Marc Alier and Juanan Pereira and Francisco Jos{\'e} Garc{\'i}a-Pe{\~n
 We acknowledge the valuable contributions and research collaboration from the authors and researchers who have worked on LAMB:
 
 #### Project Leaders
-- **Marc Alier** (Universitat Politècnica de Catalunya, UPC) - Project Lead & Principal Researcher
 - **Juanan Pereira** (Universidad del País Vasco, UPV/EHU) - Co-Lead & Principal Researcher
+- **Marc Alier** (Universitat Politècnica de Catalunya, UPC) - Co-Lead & Principal Researcher
 
 #### Senior Researchers & Academic Collaborators
 - **Francisco José García-Peñalvo** - Corresponding Author & Senior Researcher
 - **Maria Jose Casañ** (Universitat Politècnica de Catalunya, UPC) - Research Contributor & Developer
-- **Jose Cabré** (Universitat Politècnica de Catalunya, UPC) - Research Contributor & Developer
+- **Ariadna Maria LLorens** (Universitat Politècnica de Catalunya, UPC) - Research Contributor
+- **Jose Cabré** (Universitat Politècnica de Catalunya, UPC) - Research Contributor 
+- **David Lopez Alvarez** (Universitat Politècnica de Catalunya, UPC) - Research Contributor
+  
 
-#### Research Community
-- **All Research Contributors**: Authors and researchers cited in our academic publications
-- **Educational Researchers**: For their valuable feedback and collaboration on LAMB development
 
 ## 🙏 Acknowledgments
 
 ### Academic & Institutional Partners
 - **Universidad del País Vasco (UPV/EHU)** - Research institution and development partner
 - **Universitat Politècnica de Catalunya (UPC)** - Research institution and development partner
+  - **Barcelona School of Informatics** (https://fib.upc.edu)
+  - **Institut de Ciències de l'Educació - ICE** (https://ice.upc.edu)
+  - **Department of Service and Information System Engineering. ESSI** (http://essi.upc.edu)
 
 ### Open Source Dependencies
-- **Open WebUI Project** - Advanced chatbot web interface integration
-- **All Open Source Contributors** - Community contributions and improvements
+- **Open WebUI Project** - (https://github.com/open-webui/) Advanced chatbot web interface integration, and a lot of design descisions borrowed from the openwebui pipelines project. 
+- ** TSugi Project ** (https://www.tsugi.org) Used in early Lamb implementations for LTI provider support. Many thanks to Dr. Chuck (Charles Severance) for his support and inspiration. 
 
 ### Research & Educational Community
 - **Educational Researchers** - For their valuable feedback and collaboration
@@ -212,9 +215,7 @@ We acknowledge the valuable contributions and research collaboration from the au
 - **All Contributors** - For their dedication to improving education through technology
 
 ## 📧 Contact
-
-- **Project Leads**: Marc Alier (UPC), Juanan Pereira (UPV/EHU)
-- **Corresponding Author**: Francisco José García-Peñalvo
+- **Project Leads**: Marc Alier (UPC), Juanan Pereira (UPV/EHU) 
 - **Research**: Academic collaborations and research partnerships
 - **GitHub**: [https://github.com/Lamb-Project/lamb](https://github.com/Lamb-Project/lamb)
 - **Issues**: [GitHub Issues](https://github.com/Lamb-Project/lamb/issues)
