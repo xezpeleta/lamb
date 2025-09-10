@@ -209,10 +209,19 @@ We acknowledge the valuable contributions and research collaboration from the au
 - **Open WebUI Project** - (https://github.com/open-webui/) Advanced chatbot web interface integration, and a lot of design descisions borrowed from the openwebui pipelines project. 
 - ** TSugi Project ** (https://www.tsugi.org) Used in early Lamb implementations for LTI provider support. Many thanks to Dr. Chuck (Charles Severance) for his support and inspiration. 
 
+
 ### Research & Educational Community
-- **Educational Researchers** - For their valuable feedback and collaboration
-- **Teaching Community** - Early adopters and beta testers
+- **TEEM Conference** - (https://teemconference.eu) The TEEM conference has a vibrant community of researchers working on multidisciplinary fields connected to technology and education. The LAMB project was born on a coffe break conversation after the "Managing Generative AI in educational settings", we lost control of it :-) .   
+- **Teaching Community** - Early adopters and beta testers:
+  - https://tknika.eus/en/ Basque VET Applied Research Centre 
 - **All Contributors** - For their dedication to improving education through technology
+
+### Funding projects directly or indirectly contruibuting to the project
+
+- Universitat Politecnica de Cataluya. Galaxia d'Aprenentatge projecte PROPER, Factulat d'Informatica de Barcelona (2024-2025). 
+- Departament de Recerca i Universitats de la Generalitat de Catalunya through the 2021 SGR 01412 research groups award (2021-2025). 
+-Universidad del País Vasco/Euskal Herriko Unibertsitatea through the contract GIU21/037 under the program “Convocatoria para la Concesión de Ayudas a los Grupos de Investigación en la Universidad del País Vasco/Euskal Herriko Unibertsitatea (2021)
+
 
 ## 🛡️ Safe AI in Education Manifesto
 
