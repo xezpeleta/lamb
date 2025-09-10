@@ -4,7 +4,8 @@
   <img src="static/lamb_1.png" alt="LAMB Logo" width="300">
   
   **Create AI assistants for education integrated in your Learning Management System**
-  
+
+  [![Website](https://img.shields.io/badge/Website-lamb--project.org-blue)](http://www.lamb-project.org)
   [![License](https://img.shields.io/badge/license-GPL%20v3-blue.svg)](LICENSE)
   [![GitHub](https://img.shields.io/badge/GitHub-Lamb--Project-black)](https://github.com/Lamb-Project/lamb)
 </div>
@@ -97,6 +98,14 @@ LAMB requires four main services:
 
 ## 📖 Documentation
 
+### 📚 For End Users
+Visit our [official website](http://www.lamb-project.org) for:
+- **User guides and tutorials**
+- **Feature documentation**
+- **Educational resources**
+- **Community support**
+
+### 📖 Developer Documentation
 Comprehensive documentation is available in the `/Documentation` directory:
 
 - [Backend Architecture](Documentation/backend-briefing.md)
@@ -104,6 +113,7 @@ Comprehensive documentation is available in the `/Documentation` directory:
 - [Knowledge Base Integration](Documentation/kb-server-integration.md)
 - [Multi-Organization Setup](Documentation/multi_org.md)
 - [API Documentation](Documentation/openapi/api.json)
+- [Final Setup Guide](final-setup.md)
 
 ## 🗂️ Project Structure
 
