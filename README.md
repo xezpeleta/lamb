@@ -144,25 +144,81 @@ Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## 📜 License
 
-LAMB is licensed under the GNU General Public License v3.0 (GPL v3). 
+LAMB is licensed under the GNU General Public License v3.0 (GPL v3).
 
 Copyright (c) 2024-2025 Marc Alier (UPC) @granludo & Juanan Pereira (UPV/EHU) @juananpe
 
 See [LICENSE](LICENSE) for full details.
 
+## 📚 Publications & Research
+
+### Academic Publications on LAMB
+
+If you use LAMB in your research, please cite our work:
+
+**LAMB: An open-source software framework to create artificial intelligence assistants deployed and integrated into learning management systems**
+- **Authors**: Marc Alier, Juanan Pereira, Francisco José García-Peñalvo, Maria Jose Casañ, Jose Cabré
+- **Journal**: Computer Standards & Interfaces
+- **Volume**: 92
+- **Pages**: 103940
+- **Publication Date**: March 2025
+- **DOI**: [10.1016/j.csi.2024.103940](https://doi.org/10.1016/j.csi.2024.103940)
+- **Direct Link**: [ScienceDirect Article](https://www.sciencedirect.com/science/article/pii/S0920548924001090)
+
+```bibtex
+@article{ALIER2024103940,
+title = {LAMB: An open-source software framework to create artificial intelligence assistants deployed and integrated into learning management systems},
+journal = {Computer Standards \& Interfaces},
+volume = {92},
+pages = {103940},
+year = {2025},
+issn = {0920-5489},
+doi = {https://doi.org/10.1016/j.csi.2024.103940},
+url = {https://www.sciencedirect.com/science/article/pii/S0920548924001090},
+author = {Marc Alier and Juanan Pereira and Francisco Jos{\'e} Garc{\'i}a-Pe{\~n}alvo and Maria Jose Casan and Jose Cabr{\'e}}
+}
+```
+
+### Research Collaborators
+
+We acknowledge the valuable contributions and research collaboration from the authors and researchers who have worked on LAMB:
+
+#### Project Leaders
+- **Marc Alier** (Universitat Politècnica de Catalunya, UPC) - Project Lead & Principal Researcher
+- **Juanan Pereira** (Universidad del País Vasco, UPV/EHU) - Co-Lead & Principal Researcher
+
+#### Senior Researchers & Academic Collaborators
+- **Francisco José García-Peñalvo** - Corresponding Author & Senior Researcher
+- **Maria Jose Casañ** (Universitat Politècnica de Catalunya, UPC) - Research Contributor & Developer
+- **Jose Cabré** (Universitat Politècnica de Catalunya, UPC) - Research Contributor & Developer
+
+#### Research Community
+- **All Research Contributors**: Authors and researchers cited in our academic publications
+- **Educational Researchers**: For their valuable feedback and collaboration on LAMB development
+
 ## 🙏 Acknowledgments
 
-- Universidad del País Vasco (UPV/EHU)
-- Universitat Politècnica de Catalunya (UPC)
-- 
-- Open WebUI project for advanced chatbot web interface 
-- All contributors and early adopters in the educational community
+### Academic & Institutional Partners
+- **Universidad del País Vasco (UPV/EHU)** - Research institution and development partner
+- **Universitat Politècnica de Catalunya (UPC)** - Research institution and development partner
+
+### Open Source Dependencies
+- **Open WebUI Project** - Advanced chatbot web interface integration
+- **All Open Source Contributors** - Community contributions and improvements
+
+### Research & Educational Community
+- **Educational Researchers** - For their valuable feedback and collaboration
+- **Teaching Community** - Early adopters and beta testers
+- **All Contributors** - For their dedication to improving education through technology
 
 ## 📧 Contact
 
-- **Project Leads**: Marc Alier, Juanan Pereira
+- **Project Leads**: Marc Alier (UPC), Juanan Pereira (UPV/EHU)
+- **Corresponding Author**: Francisco José García-Peñalvo
+- **Research**: Academic collaborations and research partnerships
 - **GitHub**: [https://github.com/Lamb-Project/lamb](https://github.com/Lamb-Project/lamb)
 - **Issues**: [GitHub Issues](https://github.com/Lamb-Project/lamb/issues)
+- **Website**: [http://www.lamb-project.org](http://www.lamb-project.org)
 
 ---
 
