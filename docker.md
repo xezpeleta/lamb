@@ -1,11 +1,11 @@
 ### Docker Compose for the four terminal services
 
-1. Make sure that the files .env files have the proper api keys , some variables will be overridden by docker compose. 
-./backend/.env 
-./lamb-kb-server-stable/.env  
+1. Make sure that the `.env` files have the proper API keys. Some variables will be overridden by Docker Compose.
+-   `./backend/.env`
+-   `./lamb-kb-server-stable/.env`
 
+The `docker-compose.yaml` file will set up 4 containers:
 
-The [docker-compose.yaml] file  will set up 4 containers:
 - Open WebUI API (port 8080)
 - LAMB KB server (port 9090)
 - LAMB Backend (port 9099)
@@ -13,33 +13,40 @@ The [docker-compose.yaml] file  will set up 4 containers:
 
 The Docker setup uses bind mounts to the project directory at `/opt/lamb-project/lamb` with container-internal networking between services. You may adapt the file to your DNS configuration for production servers.
 
-
 - Ensure `backend/.env` exists and includes a valid `OPENAI_API_KEY`. Container overrides set:
   - `OWI_BASE_URL=http://openwebui:8080`
   - `OWI_PATH=/opt/lamb-project/lamb/open-webui/backend/data`
   - `LAMB_DB_PATH=/opt/lamb-project/lamb`
 - Ensure you have copied the `config.js` file
-  - `cp /opt/lamb-project/lamb/frontend/svelte-app/static/config.js.sample /opt/lamb-project/lamb/frontend/svelte-app/static/config.js`
+  ```bash
+  cp /opt/lamb-project/lamb/frontend/svelte-app/static/config.js.sample
+  cp /opt/lamb-project/lamb/frontend/svelte-app/static/config.js
+  ```
 - Build the Frontend
-  - Install nvm and then 
-```
+  - Install nvm and then
+
+```bash
 cd /opt/lamb-project/lamb/frontend/svelte-app
 nvm use 20
 npm install
 npm run build
-```  
+```
+
 - Start all services:
   - `docker compose up -d`
 - Open:
+
   - Frontend: `http://localhost:5173`
   - Backend docs: `http://localhost:9099/docs`
   - KB docs: `http://localhost:9090/docs`
   - Open WebUI health: `http://localhost:8080/health`
 
 - Stop:
+
   - `docker compose down`
 
 - Logs:
+
   - `docker compose logs -f backend` (or `kb`, `openwebui`, `frontend`)
 
 - Optional: if `frontend/static/config.js` points at localhost but you’re browsing from another machine, edit it to target your host IP.
