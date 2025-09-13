@@ -11,16 +11,16 @@ The `docker-compose.yaml` file will set up 4 containers:
 - LAMB Backend (port 9099)
 - Frontend Svelte dev server (port 5173)
 
-The Docker setup uses bind mounts to the project directory at `/opt/lamb-project/lamb` with container-internal networking between services. You may adapt the file to your DNS configuration for production servers.
+The Docker setup uses bind mounts to the project directory at `/opt/lamb` with container-internal networking between services. You may adapt the file to your DNS configuration for production servers.
 
 - Ensure `backend/.env` exists and includes a valid `OPENAI_API_KEY`. Container overrides set:
   - `OWI_BASE_URL=http://openwebui:8080`
-  - `OWI_PATH=/opt/lamb-project/lamb/open-webui/backend/data`
-  - `LAMB_DB_PATH=/opt/lamb-project/lamb`
+  - `OWI_PATH=/opt/lamb/open-webui/backend/data`
+  - `LAMB_DB_PATH=/opt/lamb`
 - Ensure you have copied the `config.js` file
   ```bash
-  cp /opt/lamb-project/lamb/frontend/svelte-app/static/config.js.sample
-  cp /opt/lamb-project/lamb/frontend/svelte-app/static/config.js
+  cp /opt/lamb/frontend/svelte-app/static/config.js.sample
+  cp /opt/lamb/frontend/svelte-app/static/config.js
   ```
 - Build the Frontend
   - Install nvm and then
