@@ -51,8 +51,8 @@ backend/timelog.md
 
 # Configuration files
 config.json
-*.config.js
-*.config.ts
+# *.config.js
+# *.config.ts
 !jest.config.js
 !webpack.config.js
 !open-webui/svelte.config.js
@@ -69,6 +69,10 @@ config.json
 !/frontend/.env.example
 /frontend/vite.config.js.timestamp-*
 /frontend/vite.config.ts.timestamp-*
+
+# Allow committing Svelte/Vite config for the frontend app
+!frontend/svelte-app/svelte.config.js
+!frontend/svelte-app/vite.config.js
 
 # IDE and editors
 .idea/

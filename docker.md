@@ -22,15 +22,6 @@ The Docker setup uses bind mounts to the project directory at `/opt/lamb` with c
   cp /opt/lamb/frontend/svelte-app/static/config.js.sample
   cp /opt/lamb/frontend/svelte-app/static/config.js
   ```
-- Build the Frontend
-  - Install nvm and then
-
-```bash
-cd /opt/lamb-project/lamb/frontend/svelte-app
-nvm use 20
-npm install
-npm run build
-```
 
 - Start all services:
   - `docker compose up -d`
