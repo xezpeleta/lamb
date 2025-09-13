@@ -4,8 +4,8 @@ PIPELINES_HOST=http://localhost:9099
 PIPELINES_BEARER_TOKEN=0p3n-w3bu!
 
 # Ollama Configuration
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=gpt-oss:20b
 
 # OpenAI Configuration
 OPENAI_API_KEY=your-openai-api-key-here
@@ -14,7 +14,7 @@ OPENAI_MODEL=gpt-5-mini
 OPENAI_MODELS=gpt-5-mini,gpt-5
 
 # Openwebui Authentication
-OWI_PATH="/opt/lamb-project/lamb/open-webui/backend/data"
+OWI_PATH="/opt/lamb/open-webui/backend/data"
 OWI_BASE_URL="http://localhost:8080"
 
 # OpenWebUI Admin Configuration
@@ -26,7 +26,7 @@ OWI_ADMIN_PASSWORD=admin
 LOG_LEVEL=INFO
 
 # Database Configuration
-LAMB_DB_PATH= /opt/lamb_v4/code/lamb_v4
+LAMB_DB_PATH= /opt/lamb
 LAMB_KB_SERVER= http://localhost:9090 
 LAMB_KB_SERVER_TOKEN=0p3n-w3bu! 
 LAMB_DB_PREFIX=LAMB_
