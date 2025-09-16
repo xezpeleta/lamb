@@ -158,3 +158,4 @@ open-webui/.webui_secret_key
 lamb-kb-server-stable/backend/data/chromadb/
 lamb-kb-server-stable/backend/static/
 lamb-kb-server-stable/backend/.env 
+Documentation/test-scripts/package-lock.json
