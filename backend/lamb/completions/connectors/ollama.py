@@ -158,7 +158,6 @@ async def llm_connect(messages: list, stream: bool = False, body: Dict[str, Any]
     try:
         if stream:
             async def generate_stream():
-                nonlocal base_url, resolved_model # Allow access to outer scope vars
                 # Prepare Ollama request payload with stream=True
                 ollama_params = {
                     "model": resolved_model,
@@ -226,8 +225,13 @@ async def llm_connect(messages: list, stream: bool = False, body: Dict[str, Any]
                                 # Check if Ollama stream is done
                                 if ollama_chunk.get("done"): # Check the 'done' field from Ollama
                                     logger.debug("Ollama stream finished.")
-                                    current_choice["finish_reason"] = "stop"
+                                    # Yield final content chunk first (if any content exists)
+                                    if current_choice["delta"]:
+                                        yield f"data: {json.dumps(data)}\n\n"
+
+                                    # Then yield final empty delta chunk with finish_reason
                                     current_choice["delta"] = {} # Final delta is usually empty
+                                    current_choice["finish_reason"] = "stop"
                                     yield f"data: {json.dumps(data)}\n\n"
                                     break # Exit stream processing loop
                                 else:

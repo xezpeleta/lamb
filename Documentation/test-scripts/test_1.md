@@ -421,6 +421,114 @@ LAMB supports the following languages:
 
 ---
 
+## Test Case 13: LLM Conversation Preservation Verification
+
+**Objective:** Verify that the LLM connection preserves full conversation history and enhances current user input with RAG context.
+
+**Prerequisites:**
+1. Create a test user account using signup secret "pepino-secret-key"
+2. Create and publish a test assistant with RAG enabled
+3. Have access to backend API endpoints
+
+**Steps:**
+1. **User Account Creation:**
+   - Navigate to `http://localhost:9099`
+   - Click "Sign up" button
+   - Fill form with:
+     - Name: `Test User`
+     - Email: `test@example.com`
+     - Password: `password123`
+     - Secret Key: `pepino-secret-key`
+   - Click "Sign Up" and verify account creation
+
+2. **User Authentication:**
+   - Login with credentials from step 1
+   - Verify navigation becomes active and user profile appears
+
+3. **Assistant Creation:**
+   - Navigate to "Learning Assistants" → "Create Assistant"
+   - Fill form:
+     - Name: `Test-Conversation`
+     - Description: `A test assistant for verifying conversation preservation`
+     - Keep default system prompt and template
+     - Set RAG Processor to "Simple Rag" (if KB server available)
+   - Click "Save" to create assistant
+
+4. **Assistant Publishing:**
+   - In assistant list, click "View" for the created assistant
+   - Click "Publish" button to make assistant available
+
+5. **Conversation Preservation Testing:**
+
+   **Method A: Direct API Testing (Recommended)**
+   Use curl commands to test conversation preservation:
+
+   ```bash
+   # First message - establish context
+   curl -X POST "http://localhost:9099/lamb/v1/completions/" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "assistant": 2,
+       "messages": [
+         {"role": "user", "content": "My name is John and I am learning about machine learning."}
+       ],
+       "stream": false
+     }'
+
+   # Second message - test context preservation
+   curl -X POST "http://localhost:9099/lamb/v1/completions/" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "assistant": 2,
+       "messages": [
+         {"role": "user", "content": "My name is John and I am learning about machine learning."},
+         {"role": "assistant", "content": "Hello John! Machine learning is a fascinating field..."},
+         {"role": "user", "content": "What specific topics should I focus on?"}
+       ],
+       "stream": false
+     }'
+   ```
+
+   **Method B: Browser-based Testing (if Chat interface available)**
+   - Navigate to assistant detail view
+   - Click "Chat" button
+   - Send multiple messages and verify context is maintained
+   - Check that responses reference previous conversation elements
+
+**Expected Results:**
+- **Full Conversation History Preserved:** LLM receives complete message history including system prompt, previous user messages, and assistant responses
+- **Current Input Enhancement:** Latest user message is enhanced via prompt template with `{user_input}` placeholder
+- **RAG Context Integration:** If RAG is enabled, relevant context is inserted via `{context}` placeholder
+- **Contextual Responses:** Assistant responses should reference and build upon previous conversation elements
+- **Proper Message Flow:** System prompt → Previous conversation → Enhanced current input → LLM processing
+
+**Technical Verification:**
+- Check that `llm_connect()` in `openai.py` receives full `messages` array
+- Verify `simple_augment.py` preserves all previous messages
+- Confirm RAG context (if enabled) is properly inserted into prompt template
+- Validate that OpenAI API receives complete conversation context
+
+**Console/Debug Verification:**
+- Backend logs should show complete message arrays being processed
+- OpenAI API calls should include full conversation history
+- RAG queries (if enabled) should use last user message as search query
+- Response processing should maintain conversation continuity
+
+**Error Scenarios:**
+- **Missing Authentication:** Should return 401 Unauthorized
+- **Invalid Assistant ID:** Should return 404 Not Found
+- **RAG Server Unavailable:** Should fallback gracefully with empty context
+- **OpenAI API Errors:** Should be properly handled and logged
+
+**Performance Expectations:**
+- Response times should be reasonable (< 30 seconds for complex queries)
+- Memory usage should remain stable across multiple conversation turns
+- No memory leaks in conversation state management
+
+---
+
 ### Language Testing Performance Verification
 
 **Console Monitoring for i18n:**
