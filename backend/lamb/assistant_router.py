@@ -434,19 +434,23 @@ async def soft_delete_assistant(
                     group_manager.remove_user_from_group(
                         group_id, user['id'])
 
-        # Update assistant owner to admin
+        # Update assistant owner to admin and make name unique to avoid conflicts
+        import time
+        unique_suffix = f"_deleted_{int(time.time())}"
+        deleted_name = f"{assistant.name}{unique_suffix}"
+        
         success = db_manager.update_assistant(assistant_id, Assistant(
-            name=assistant.name,
-            description=assistant.description,
+            name=deleted_name,  # Make name unique to avoid UNIQUE constraint violations
+            description=assistant.description or "",
             owner="deleted_assistant@owi.com",  # Change owner to deleted_assistant@owi.com
-            api_callback=assistant.api_callback,
-            system_prompt=assistant.system_prompt,
-            prompt_template=assistant.prompt_template,
-            RAG_endpoint=assistant.RAG_endpoint,
-            RAG_Top_k=assistant.RAG_Top_k,
-            RAG_collections=assistant.RAG_collections,
-            pre_retrieval_endpoint=assistant.pre_retrieval_endpoint,
-            post_retrieval_endpoint=assistant.post_retrieval_endpoint
+            api_callback=assistant.api_callback or "",
+            system_prompt=assistant.system_prompt or "",
+            prompt_template=assistant.prompt_template or "",
+            RAG_endpoint=assistant.RAG_endpoint or "",
+            RAG_Top_k=assistant.RAG_Top_k or 5,
+            RAG_collections=assistant.RAG_collections or "",
+            pre_retrieval_endpoint=assistant.pre_retrieval_endpoint or "",
+            post_retrieval_endpoint=assistant.post_retrieval_endpoint or ""
         ))
 
         if not success:

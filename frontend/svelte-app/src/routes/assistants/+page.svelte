@@ -408,15 +408,19 @@
      * Handles the confirmation of the delete action.
      */
     async function handleDeleteConfirm() {
-        if (!assistantToDeleteId) return;
+        console.log('[Delete Modal] handleDeleteConfirm called');
+        if (!assistantToDeleteId) {
+            console.log('[Delete Modal] No assistantToDeleteId, aborting delete');
+            return;
+        }
 
         isDeletingAssistant = true;
         deleteError = '';
 
         try {
-            console.log(`Attempting to delete assistant ID: ${assistantToDeleteId}`);
+            console.log(`[Delete Modal] Attempting to delete assistant ID: ${assistantToDeleteId}`);
             await deleteAssistant(assistantToDeleteId);
-            console.log(`Assistant ${assistantToDeleteId} deleted successfully.`);
+            console.log(`[Delete Modal] Assistant ${assistantToDeleteId} deleted successfully.`);
 
             // Close modal and reset state
             isDeleteModalOpen = false;
@@ -427,12 +431,11 @@
             // Check if we were deleting the currently viewed assistant
             if (currentView === 'detail' && selectedAssistantData?.id === deletedId.toString()) {
                 // If deleting from detail view, navigate back to list
+                console.log('[Delete Modal] Deleted from detail view, navigating to list');
                 showList(); 
             } else {
                 // If deleting from list view, reload the current page of the list
-                // Find the component instance and reload - this is complex.
-                // Easier to navigate back to the list view for now, forcing a reload.
-                // TODO: Implement more granular refresh if needed.
+                console.log('[Delete Modal] Deleted from list view, navigating to list');
                 showList(); 
                 // Alternatively: await loadPaginatedAssistants(currentPage, ITEMS_PER_PAGE); // requires currentPage and ITEMS_PER_PAGE from AssistantsList
             }
@@ -440,11 +443,12 @@
             // Optional: Show success message (e.g., toast notification)
 
         } catch (error) {
-            console.error(`Error deleting assistant ${assistantToDeleteId}:`, error);
+            console.error(`[Delete Modal] Error deleting assistant ${assistantToDeleteId}:`, error);
             deleteError = error instanceof Error ? error.message : $_('assistants.deleteModal.deleteError', { default: 'Failed to delete assistant.' });
             // Keep modal open to show error
         } finally {
             isDeletingAssistant = false;
+            console.log('[Delete Modal] handleDeleteConfirm finished');
         }
     }
 
@@ -1105,7 +1109,6 @@
            assistantToDeleteName = null;
            deleteError = ''; // Clear errors on close
        }}
-       error={deleteError} 
    />
 {/if}
 

@@ -1,13 +1,14 @@
 <script>
     import { _, locale } from '$lib/i18n';
+    import { createEventDispatcher } from 'svelte';
+
+    const dispatch = createEventDispatcher();
 
     // --- Props ---
     let {
         isOpen = $bindable(false),
         assistantName = '',
-        isDeleting = $bindable(false),
-        onConfirm,
-        onClose
+        isDeleting = $bindable(false)
     } = $props();
 
     // --- Internal State ---
@@ -26,13 +27,13 @@
 
     // --- Functions ---
     function handleConfirm() {
+        console.log('[DeleteConfirmationModal] handleConfirm called');
         if (isDeleting) return;
-        onConfirm?.();
-    }
-
-    function handleClose() {
+        console.log('[DeleteConfirmationModal] About to dispatch confirm event');
+        dispatch('confirm');
+    }    function handleClose() {
         if (isDeleting) return; // Prevent closing while delete is in progress
-        onClose?.();
+        dispatch('close');
     }
 
     /** @param {KeyboardEvent} event */
