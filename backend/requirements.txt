@@ -1,9 +1,9 @@
 fastapi==0.111.0
-uvicorn[standard]==0.22.0
-pydantic==2.7.1
+uvicorn[standard]==0.31.1
+pydantic==2.11.0
 python-multipart==0.0.9
-python-socketio
-grpcio
+python-socketio==5.11.2
+grpcio==1.64.1
 
 passlib==1.7.4
 passlib[bcrypt]
@@ -11,62 +11,62 @@ PyJWT[crypto]
 
 requests==2.32.2
 aiohttp==3.9.5
-httpx
+httpx==0.27.1
 
 # MCP (Model Context Protocol) libraries
-mcp
+mcp==1.14.0
 
 # AI libraries
-openai
-anthropic
-google-generativeai
-vertexai
+openai==1.35.3
+anthropic==0.28.0
+google-generativeai==0.7.2
+vertexai==1.60.0
 
 # Database
-pymongo
-peewee
-SQLAlchemy
-boto3
-redis
-sqlmodel
-chromadb
-psycopg2-binary
+pymongo==4.7.3
+peewee==3.17.5
+SQLAlchemy==2.0.30
+boto3==1.34.131
+redis==5.0.7
+sqlmodel==0.0.18
+chromadb==0.5.0
+psycopg2-binary==2.9.9
 
 # Observability
-langfuse
-ddtrace
+langfuse==2.48.0
+ddtrace==2.9.2
 
 # ML libraries
-torch
-numpy
-pandas
+torch==2.3.1
+numpy==1.26.4
+pandas==2.2.2
 
-xgboost
-scikit-learn
+xgboost==2.0.3
+scikit-learn==1.5.1
 
 # NLP libraries
-sentence-transformers
-transformers
-tokenizers
-nltk
-tiktoken
+sentence-transformers==2.7.0
+transformers==4.42.3
+tokenizers==0.19.1
+nltk==3.8.1
+tiktoken==0.7.0
 
 # Image processing
-Pillow
-opencv-python
+Pillow==10.3.0
+opencv-python==4.10.0.84
 
 # Visualization
-matplotlib
-seaborn
+matplotlib==3.9.1
+seaborn==0.13.2
 
 # Web scraping
-selenium
-playwright
-beautifulsoup4
+selenium==4.20.0
+playwright==1.45.0
+beautifulsoup4==4.12.3
 
 # Llama Index for RAG
-llama-index
-llama-index-llms-ollama
+llama-index==0.10.56
+llama-index-llms-ollama==0.2.2
 
 
 
