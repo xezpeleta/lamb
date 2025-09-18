@@ -169,7 +169,7 @@
             const config = getConfig();
             console.log('[DEBUG] Assistants page onMount: Config object received:', JSON.stringify(config, null, 2));
             if (config && config.api && config.api.baseUrl) {
-                lambServerUrl = config.api.baseUrl.replace(/\/$/, ''); // Remove trailing slash  
+                lambServerUrl = config.api.lambServer.replace(/\/$/, ''); // Remove trailing slash  
                 console.log("LAMB config loaded for chat - API URL:", lambServerUrl);
                 console.log("LAMB config loaded for chat - Using user authentication");
             } else {

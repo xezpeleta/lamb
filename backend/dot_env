@@ -37,6 +37,9 @@ LAMB_DB_PREFIX=LAMB_
 SIGNUP_ENABLED=true
 SIGNUP_SECRET_KEY=pepino-secret-key
 
+# LTI Configuration
+LTI_SECRET=lamb-lti-secret-key-2024
+
 # LLM CLI Configuration
 LLM_DEFAULT_MODEL=gpt-5-mini
 
