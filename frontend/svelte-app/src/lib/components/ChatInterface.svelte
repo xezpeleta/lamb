@@ -14,18 +14,18 @@
 
     /**
      * @typedef {Object} ChatInterfaceProps
-     * @property {string} apiUrl - Base URL for the chat API.
-     * @property {string} apiKey - API key for authentication.
+     * @property {string} apiUrl - Base URL for the creator interface API.
+     * @property {string} userToken - User authentication token.
      * @property {string | null} [initialModel] - Optional initial model to select.
-     * @property {string | null} [assistantId] - Optional assistant ID to chat with (if applicable).
+     * @property {string} assistantId - Assistant ID to chat with (required).
      */
     
     // --- Component Props (using Svelte 5 runes) ---
     let { 
-        apiUrl = '',            // Provide default empty string
-        apiKey = '',            // Provide default empty string
+        apiUrl = '',            // Base URL for creator interface
+        userToken = '',         // User authentication token (replaces apiKey)
         initialModel = null,
-        assistantId = null
+        assistantId = null      // Required for new proxy endpoint
     } = $props();
 
     // --- Component State (using Svelte 5 runes) ---
@@ -52,8 +52,8 @@
     // --- API Calls ---
     /** Fetches available models */
     async function fetchModels() {
-        if (!apiUrl || !apiKey) {
-            modelsError = 'API URL or API Key is not configured.';
+        if (!apiUrl || !userToken) {
+            modelsError = 'API URL or user token is not configured.';
             console.error(modelsError);
             return;
         }
@@ -63,7 +63,7 @@
         try {
             const response = await fetch(`${apiUrl}/models`, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${apiKey}` }
+                headers: { 'Authorization': `Bearer ${userToken}` }
             });
             if (!response.ok) throw new Error(`Failed to fetch models: ${response.status}`);
             const data = await response.json();
@@ -106,7 +106,7 @@
      * Sends messages to the chat API and handles streaming response.
      */
     async function handleSubmit() {
-        if (!input.trim() || isLoading || !apiUrl || !apiKey) return;
+        if (!input.trim() || isLoading || !apiUrl || !userToken) return;
 
         logWithTime(`Submitting message with model: ${selectedModel}`);
         isLoading = true;
@@ -135,12 +135,21 @@
         let currentAssistantContent = '';
 
         try {
-            logWithTime(`Sending request to ${apiUrl}/chat/completions`);
-            const response = await fetch(`${apiUrl}/chat/completions`, {
+            // Validate required props
+            if (!assistantId) {
+                throw new Error('Assistant ID is required for chat');
+            }
+            if (!userToken) {
+                throw new Error('User authentication token is required');
+            }
+            
+            const endpoint = `${apiUrl}/assistant/${assistantId}/chat/completions`;
+            logWithTime(`Sending request to ${endpoint}`);
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': `Bearer ${userToken}`
                 },
                 body: JSON.stringify(payload)
             });

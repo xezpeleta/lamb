@@ -58,6 +58,10 @@ router.include_router(knowledges_router, prefix="/knowledgebases")
 from .organization_router import router as organization_router
 router.include_router(organization_router, prefix="/admin")
 
+# Include the learning assistant proxy router
+from .learning_assistant_proxy import router as learning_assistant_proxy_router
+router.include_router(learning_assistant_proxy_router)
+
 
 
 # Initialize security

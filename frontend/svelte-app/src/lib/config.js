@@ -5,7 +5,7 @@ const defaultConfig = {
     api: {
         baseUrl: '/creator', // Default or fallback base URL
         lambServer: 'http://localhost:9099', // Default LAMB server URL
-        lambApiKey: '0p3n-w3bu!' // Default LAMB API key
+        // Note: lambApiKey removed for security - now using user authentication
     },
     // Static assets configuration
     assets: {

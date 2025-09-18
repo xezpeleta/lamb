@@ -39,7 +39,7 @@ The MCP testing interface allows you to:
 
 - **API Base URL**: Uses `lambServer` from the configuration (typically `http://localhost:9099`)
 - **Endpoints**: Calls `/lamb/v1/mcp/*` endpoints
-- **Authentication**: Bearer token authentication using `lambApiKey` from config
+- **Authentication**: Bearer token authentication using user authentication tokens (lambApiKey removed for security)
 - **Framework**: Built with Svelte 5 and Tailwind CSS
 
 ## Files

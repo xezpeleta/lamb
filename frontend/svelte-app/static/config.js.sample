@@ -18,7 +18,7 @@ window.LAMB_CONFIG = {
 		openWebUiServer: 'http://localhost:8080',
 
     // API key for LAMB server authentication
-    lambApiKey: '0p3n-w3bu!'
+    // Note: lambApiKey removed for security - now using user authentication tokens
   },
   
   // Static assets configuration

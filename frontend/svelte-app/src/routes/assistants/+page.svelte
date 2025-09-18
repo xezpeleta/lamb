@@ -36,7 +36,8 @@
 
     // --- API Configuration State ---
     let lambServerUrl = $state('');
-    let lambApiKey = $state(''); // Assuming apiKey is named this way in config
+    // Note: lambApiKey removed for security - now using user authentication tokens
+    let userToken = $state('');
     let configError = $state('');
 
     // --- URL Handling --- 
@@ -167,18 +168,27 @@
         try {
             const config = getConfig();
             console.log('[DEBUG] Assistants page onMount: Config object received:', JSON.stringify(config, null, 2));
-            if (config && config.api && config.api.lambServer && config.api.lambApiKey) {
-                lambServerUrl = config.api.lambServer.replace(/\/$/, ''); // Remove trailing slash
-                lambApiKey = config.api.lambApiKey;
+            if (config && config.api && config.api.baseUrl) {
+                lambServerUrl = config.api.baseUrl.replace(/\/$/, ''); // Remove trailing slash  
                 console.log("LAMB config loaded for chat - API URL:", lambServerUrl);
-                console.log("LAMB config loaded for chat - Has API Key:", !!lambApiKey);
+                console.log("LAMB config loaded for chat - Using user authentication");
             } else {
-                throw new Error('Missing required LAMB configuration (lambServer or lambApiKey).');
+                throw new Error('Missing required LAMB configuration (baseUrl).');
             }
         } catch (error) {
             configError = error instanceof Error ? error.message : 'Failed to load LAMB configuration.';
             console.error(configError);
             // Optionally disable chat tab if config fails
+        }
+
+        // Initialize user token from localStorage
+        if (browser) {
+            userToken = localStorage.getItem('userToken') || '';
+            if (userToken) {
+                console.log("User token loaded for chat authentication");
+            } else {
+                console.warn("No user token found - chat functionality may be limited");
+            }
         }
 
         currentLocale = $locale ?? null; // Handle potential undefined value from $locale
@@ -1052,7 +1062,7 @@
                     <strong class="font-bold">{currentLocale ? $_('assistants.detail.configErrorTitle', { default: 'Configuration Error:' }) : 'Configuration Error:'}</strong>
                     <span class="block sm:inline">{configError} - {currentLocale ? $_('assistants.chatDisabled') : 'Chat functionality is disabled.'}</span>
                 </div>
-            {:else if lambServerUrl && lambApiKey}
+            {:else if lambServerUrl && userToken}
                 <!-- Header for Chat View (Optional: can add title or keep it clean) -->
                 <div class="px-6 py-4 border-b border-gray-200">
                      <h2 class="text-xl font-semibold text-gray-800">
@@ -1061,7 +1071,7 @@
                 </div>
                 <ChatInterface 
                     apiUrl={lambServerUrl} 
-                    apiKey={lambApiKey} 
+                    userToken={userToken} 
                     assistantId={selectedAssistantData.id} 
                     initialModel={selectedAssistantData.llm}
                 />
