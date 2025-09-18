@@ -25,7 +25,7 @@
 		if ($user.isLoggedIn) {
 			try {
 				// Build the fetch URL - the news file is in backend/static/md/lamb-news.md
-				const newsUrl = `${base}/md/lamb-news.md`;
+				const newsUrl = `${base}/static/md/lamb-news.md`;
 				console.log('Fetching news from:', newsUrl);
 				
 				const response = await fetch(newsUrl);
