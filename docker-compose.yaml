@@ -103,6 +103,7 @@ services:
     working_dir: ${LAMB_PROJECT_PATH}/frontend/svelte-app
     environment:
       - HOST=0.0.0.0
+      - PROXY_TARGET=http://backend:9099
     volumes:
       - ${LAMB_PROJECT_PATH}:${LAMB_PROJECT_PATH}
     ports:
