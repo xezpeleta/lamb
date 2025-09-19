@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { init, register, locale as svelteLocale, _ } from 'svelte-i18n';
+import { init, register, locale as svelteLocale, _, waitLocale } from 'svelte-i18n';
 
 // Ensure this runs only once
 let isInitialized = false;
@@ -70,4 +70,4 @@ export function setLocale(newLocale) {
 }
 
 // Re-export the svelte-i18n tools
-export { _ , svelteLocale as locale }; 
+export { _ , svelteLocale as locale, waitLocale }; 

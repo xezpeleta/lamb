@@ -1,5 +1,6 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
+    import { browser } from '$app/environment';
     import { page } from '$app/stores'; // Import page store to read URL params
     import { goto } from '$app/navigation';
     import { base } from '$app/paths';
@@ -656,8 +657,10 @@
     onDestroy(() => {
         console.log("Admin page unmounting");
         
-        // Remove global keydown listener
-        document.removeEventListener('keydown', handleKeydown);
+        // Remove global keydown listener (only on client)
+        if (browser) {
+            document.removeEventListener('keydown', handleKeydown);
+        }
         
         if (unsubscribePage) {
             unsubscribePage();
