@@ -53,6 +53,11 @@ const fs = require('fs');
     .getByRole('button', { name: /create knowledge base/i })
     .click();
 
+  // Wait a moment for any potential bug to manifest and take a screenshot
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: 'create_kb_bug_screenshot.png', fullPage: true });
+  console.log('Screenshot saved as create_kb_bug_screenshot.png');
+
   await browser.close();
 })().catch(err => {
   console.error(err);
