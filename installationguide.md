@@ -167,8 +167,8 @@ Note: The working Open WebUI version used in this setup is v0.5.6. If you build 
 4.  **Create and configure the `.env` file:**
 
     ```bash
-    # Create from sample
-    cp .env.sample .env
+    # Create from the example
+    cp .env.example .env
 
     # Point these to YOUR actual clone location
     # If you followed this guide exactly, use /opt/lamb-project/lamb
