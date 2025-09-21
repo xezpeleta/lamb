@@ -1,4 +1,5 @@
 const { chromium } = require("playwright");
+const fs = require('fs');
 
 (async () => {
   // Launch browser with slowMo for throttling
@@ -6,35 +7,49 @@ const { chromium } = require("playwright");
   const context = await browser.newContext();
   const page = await context.newPage();
 
+  // Load session data from session_data.json if available
+  try {
+    if (fs.existsSync('session_data.json')) {
+      const sessionData = JSON.parse(fs.readFileSync('session_data.json', 'utf-8'));
+      console.log('Loaded session data.');
+      
+      // Set localStorage data
+      await page.goto('http://localhost:5173/');
+      await page.evaluate((data) => {
+        for (const [key, value] of Object.entries(data.localStorage)) {
+          localStorage.setItem(key, value);
+        }
+        for (const [key, value] of Object.entries(data.sessionStorage)) {
+          sessionStorage.setItem(key, value);
+        }
+      }, sessionData);
+      
+      // Reload to apply the session data
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+    }
+  } catch (err) {
+    console.error('Failed to load session data:', err);
+  }
+
   try {
     // Navigate to the application
     console.log("Navigating to http://localhost:5173/");
     await page.goto("http://localhost:5173/");
     await page.waitForLoadState("networkidle");
 
-    // Login process
-    console.log("Starting login process...");
-    // Fill email field
-    await page.fill("#email", "admin@owi.com");
-    // Fill password field
-    await page.fill("#password", "admin");
-    // Click login button
-    await page.click("form > button");
-    await page.waitForLoadState("networkidle");
-
-    console.log("Login completed");
-    // Set viewport
-    // await page.setViewportSize({ width: 645, height: 1042 });
-
+    // ...existing code...
     // navigate to http://localhost:5173/assistants?view=create
     await page.goto("http://localhost:5173/assistants?view=create");
     await page.waitForLoadState("networkidle");
 
+    // ...existing code...
     // Click "Create Assistant" button
     console.log("Clicking Create Assistant...");
     await page.getByRole("button", { name: "Create Assistant" }).click();
     await page.waitForLoadState("networkidle");
 
+    // ...existing code...
     // Fill Assistant Name
     console.log("Filling assistant name...");
     await page.fill("#assistant-name", "asistente_ikasiker");

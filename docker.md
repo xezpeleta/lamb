@@ -1,7 +1,7 @@
 ### Docker Compose for the four terminal services
 
 1. Make sure that the `.env` files have the proper API keys. Some variables will be overridden by Docker Compose.
--   `./backend/.env` (you have a sample in `./backend/dot_env`)
+-   `./backend/.env` (you have a sample in `./backend/.env.example`)
 -   `./lamb-kb-server-stable/.env`
 
 The `docker-compose.yaml` file will set up 4 containers:

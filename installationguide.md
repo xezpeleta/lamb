@@ -29,13 +29,13 @@ First, create and set permissions for the main project directory.
 
 ```bash
 # Create the main directory with administrator privileges
-sudo mkdir -p /opt/lamb-project
+sudo mkdir -p $LAMB_PROJECT_PATH
 
 # Change ownership of the directory to the current user to avoid using sudo later
-sudo chown $(whoami) /opt/lamb-project
+sudo chown $(whoami) $LAMB_PROJECT_PATH
 
 # Navigate into the new directory
-cd /opt/lamb-project
+cd $LAMB_PROJECT_PATH
 ```
 
 ### Step 2: Clone the Source Code Repository
@@ -47,7 +47,7 @@ Clone the project from GitHub into the directory created above.
 git clone https://github.com/Lamb-Project/lamb.git
 
 # Navigate into the project root
-cd /opt/lamb-project/lamb
+cd $LAMB_PROJECT_PATH
 ```
 
 ### Step 3: Configure and Launch Open WebUI (Terminal 1)
@@ -59,7 +59,7 @@ Note: The working Open WebUI version used in this setup is v0.5.6. If you build 
 1.  **Navigate to the correct directory:**
 
     ```bash
-    cd /opt/lamb-project/lamb/open-webui/backend
+    cd $LAMB_PROJECT_PATH/open-webui/backend
     ```
 
 2.  **Create and activate the Python virtual environment:**
@@ -97,7 +97,7 @@ Note: The working Open WebUI version used in this setup is v0.5.6. If you build 
 1.  **Navigate to the correct directory:**
 
     ```bash
-    cd /opt/lamb-project/lamb/lamb-kb-server-stable/backend
+    cd $LAMB_PROJECT_PATH/lamb-kb-server-stable/backend
     ```
 
 2.  **Create and activate the Python virtual environment:**
@@ -148,7 +148,7 @@ Note: The working Open WebUI version used in this setup is v0.5.6. If you build 
 1.  **Navigate to the correct directory:**
 
     ```bash
-    cd /opt/lamb-project/lamb/backend
+    cd $LAMB_PROJECT_PATH/backend
     ```
 
 2.  **Create and activate the Python virtual environment:**
@@ -167,13 +167,13 @@ Note: The working Open WebUI version used in this setup is v0.5.6. If you build 
 4.  **Create and configure the `.env` file:**
 
     ```bash
-    # Create from sample
-    cp dot_env .env
+    # Create from the example
+    cp .env.example .env
 
     # Point these to YOUR actual clone location
     # If you followed this guide exactly, use /opt/lamb-project/lamb
     # If you cloned elsewhere, set accordingly.
-    REPO_ROOT="/opt/lamb-project/lamb"   # <-- adjust if needed
+    REPO_ROOT="$LAMB_PROJECT_PATH" 
 
     # Set the absolute path for the Open WebUI database
     sed -i '' "s|^OWI_PATH=.*|OWI_PATH=\"${REPO_ROOT}/open-webui/backend/data\"|" .env
@@ -202,7 +202,7 @@ Note: The working Open WebUI version used in this setup is v0.5.6. If you build 
 1.  **Navigate to the frontend app directory:**
 
     ```bash
-    cd /opt/lamb-project/lamb/frontend/svelte-app
+    cd $LAMB_PROJECT_PATH/frontend/svelte-app
     ```
 
 2.  **Create the frontend configuration file from the sample:**
@@ -267,29 +267,25 @@ lsof -ti tcp:5173 | xargs kill || true   # Frontend
 Start each service (one terminal per service):
 
 ```bash
-# Terminal 1 — Open WebUI
-cd /opt/lamb-project/lamb/open-webui/backend
+cd $LAMB_PROJECT_PATH/open-webui/backend
 source .venv/bin/activate
 PORT=8080 ./dev.sh
 ```
 
 ```bash
-# Terminal 2 — KB Server
-cd /opt/lamb-project/lamb/lamb-kb-server-stable/backend
+cd $LAMB_PROJECT_PATH/lamb-kb-server-stable/backend
 source .venv/bin/activate
 python start.py
 ```
 
 ```bash
-# Terminal 3 — LAMB Backend (dev)
-cd /opt/lamb-project/lamb/backend
+cd $LAMB_PROJECT_PATH/backend
 source .venv/bin/activate
 ./dev.sh
 ```
 
 ```bash
-# Terminal 4 — Frontend
-cd /opt/lamb-project/lamb/frontend/svelte-app
+cd $LAMB_PROJECT_PATH/frontend/svelte-app
 . "$HOME/.nvm/nvm.sh" && nvm use --lts=iron
 npm run dev -- --host
 ```
@@ -297,10 +293,10 @@ npm run dev -- --host
 Optional: start all in the background (logs go to .dev.log in each folder):
 
 ```bash
-(cd /opt/lamb-project/lamb/open-webui/backend && source .venv/bin/activate && PORT=8080 ./dev.sh > .dev.log 2>&1 &)
-(cd /opt/lamb-project/lamb/lamb-kb-server-stable/backend && source .venv/bin/activate && python start.py > .dev.log 2>&1 &)
-(cd /opt/lamb-project/lamb/backend && source .venv/bin/activate && ./dev.sh > .dev.log 2>&1 &)
-(cd /opt/lamb-project/lamb/frontend/svelte-app && . "$HOME/.nvm/nvm.sh" && nvm use --lts=iron >/dev/null && npm run dev -- --host 0.0.0.0 > .dev.log 2>&1 &)
+(cd $LAMB_PROJECT_PATH/open-webui/backend && source .venv/bin/activate && PORT=8080 ./dev.sh > .dev.log 2>&1 &)
+(cd $LAMB_PROJECT_PATH/lamb-kb-server-stable/backend && source .venv/bin/activate && python start.py > .dev.log 2>&1 &)
+(cd $LAMB_PROJECT_PATH/backend && source .venv/bin/activate && ./dev.sh > .dev.log 2>&1 &)
+(cd $LAMB_PROJECT_PATH/frontend/svelte-app && . "$HOME/.nvm/nvm.sh" && nvm use --lts=iron >/dev/null && npm run dev -- --host 0.0.0.0 > .dev.log 2>&1 &)
 ```
 
 Verify after restart:
@@ -315,10 +311,10 @@ curl -fsS http://localhost:9099/status && echo
 View logs when started in background:
 
 ```bash
-tail -n 100 -f /opt/lamb-project/lamb/open-webui/backend/.dev.log
-tail -n 100 -f /opt/lamb-project/lamb/lamb-kb-server-stable/backend/.dev.log
-tail -n 100 -f /opt/lamb-project/lamb/backend/.dev.log
-tail -n 100 -f /opt/lamb-project/lamb/frontend/svelte-app/.dev.log
+tail -n 100 -f $LAMB_PROJECT_PATH/open-webui/backend/.dev.log
+tail -n 100 -f $LAMB_PROJECT_PATH/lamb-kb-server-stable/backend/.dev.log
+tail -n 100 -f $LAMB_PROJECT_PATH/backend/.dev.log
+tail -n 100 -f $LAMB_PROJECT_PATH/frontend/svelte-app/.dev.log
 ```
 
 ---
@@ -338,7 +334,7 @@ Prereqs:
 Build steps:
 
 ```bash
-cd /opt/lamb-project/lamb/open-webui
+cd $LAMB_PROJECT_PATH/open-webui
 npm install
 npm run build
 ```
@@ -346,7 +342,7 @@ npm run build
 Preview the built app:
 
 ```bash
-cd /opt/lamb-project/lamb/open-webui
+cd $LAMB_PROJECT_PATH/open-webui
 npm run preview
 ```
 
