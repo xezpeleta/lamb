@@ -1,6 +1,7 @@
 <script>
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths'; // Import base path helper
+	import { dev } from '$app/environment';
 	import Login from '$lib/components/Login.svelte';
 	import Signup from '$lib/components/Signup.svelte';
 	import { user } from '$lib/stores/userStore';
@@ -25,7 +26,8 @@
 		if ($user.isLoggedIn) {
 			try {
 				// Build the fetch URL - the news file is in backend/static/md/lamb-news.md
-				const newsUrl = `${base}/static/md/lamb-news.md`;
+				// In dev mode, it's served at /md/, in prod at /static/md/
+				const newsUrl = dev ? `${base}/md/lamb-news.md` : `${base}/static/md/lamb-news.md`;
 				console.log('Fetching news from:', newsUrl);
 				
 				const response = await fetch(newsUrl);
