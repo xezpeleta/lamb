@@ -71,7 +71,7 @@ When making calls to the backend API, be aware of two patterns:
 1.  **Standard API Calls (under `/creator`):** Most backend endpoints related to creating/managing assistants, KBs, etc., are expected to be under the `/creator` base path (or whatever is configured in `window.LAMB_CONFIG.api.baseUrl`). Use the `$lib/config.js` helper function for these:
     ```javascript
     import { getApiUrl } from '$lib/config';
-    
+
     const loginUrl = getApiUrl('/auth/login'); // -> /creator/auth/login (typically)
     ```
 
@@ -85,9 +85,19 @@ When making calls to the backend API, be aware of two patterns:
         if (!lambServerBase) throw new Error('Config missing lambServer');
         const capabilitiesUrl = `${lambServerBase.replace(/\/$/, '')}/lamb/v1/completions/list`;
         ```
-    *   **Static Assets:** Use paths relative to the web server root.
+    *   **Static Configuration Files (e.g., defaults.json):** Use the `lambServer` base URL to access static configuration files served by the backend.
         ```javascript
-        const defaultsUrl = '/static/json/defaults.json';
+        import { getConfig } from '$lib/config';
+
+        const config = getConfig();
+        const lambServerBase = config?.api?.lambServer;
+        if (!lambServerBase) throw new Error('Config missing lambServer');
+        const defaultsUrl = `${lambServerBase.replace(/\/$/, '')}/static/json/defaults.json`;
+
+        // This works in both development and production because:
+        // - Backend serves /static from backend/static/ directory
+        // - Frontend uses the LAMB server URL to access these files
+        // - Files like defaults.json are not copied to frontend build directory
         ```
     Always verify the correct base path required for each specific endpoint.
 

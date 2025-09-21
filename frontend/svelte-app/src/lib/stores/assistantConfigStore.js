@@ -168,7 +168,12 @@ function createAssistantConfigStore() {
             // Fetch Defaults (only if not loaded from cache)
             if (!defaults) {
                 try {
-                    const defaultsUrl = '/static/json/defaults.json'; 
+                    const config = getConfig();
+                    const lambServerBase = config?.api?.lambServer;
+                    if (!lambServerBase) {
+                        throw new Error('Lamb server base URL (lambServer) is not configured within config.api.');
+                    }
+                    const defaultsUrl = `${lambServerBase.replace(/\/$/, '')}/static/json/defaults.json`;
                     console.log(`assistantConfigStore: Fetching defaults from: ${defaultsUrl}`);
                     const defaultsResponse = await axios.get(defaultsUrl);
                     defaults = defaultsResponse.data; // Assign fetched data
