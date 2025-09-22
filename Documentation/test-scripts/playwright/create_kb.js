@@ -42,7 +42,7 @@ const fs = require('fs');
   await page.getByRole('button', { name: /create knowledge base/i }).click();
 
   // Name
-  await page.getByLabel(/name\s*\*/i).fill('convocatoria ikasiker');
+  await page.getByLabel(/name\s*\*/i).fill('convocatoria_ikasiker');
 
   // Description
   await page.getByLabel(/description/i).fill('bases de la convocatoria ikasiker');
