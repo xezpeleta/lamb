@@ -19,4 +19,4 @@ IMPORTANT: NEVER use heredoc syntax (<<EOF ... EOF) for issue bodies or generati
 
 ## Available labels:
 
-`enhancement`, `bug`, `documentation`, `technical-debt`
+`enhancement`, `bug`, `documentation`, `technical-debt`, `good-first-issue`, `help-wanted`, `question`, `discussion`, `invalid`, `wontfix`, `duplicate`
