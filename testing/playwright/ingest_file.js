@@ -1,7 +1,44 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
+const https = require('https');
+const path = require('path');
+
+const PDF_URL = 'https://www.euskadi.eus/web01-bopv/es/bopv2/datos/2025/09/2503764a.pdf';
+const PDF_DEST = '/tmp/ikasiker.pdf';
+
+function downloadPDF(url, dest) {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(dest);
+        https.get(url, (response) => {
+            if (response.statusCode !== 200) {
+                reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+                return;
+            }
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close(resolve);
+            });
+        }).on('error', (err) => {
+            fs.unlink(dest, () => reject(err));
+        });
+    });
+}
 
 (async () => {
+    // Step 1: Download the PDF first
+    if (!fs.existsSync(PDF_DEST)) {
+        console.log('Downloading ikasiker.pdf...');
+        try {
+            await downloadPDF(PDF_URL, PDF_DEST);
+            console.log('Downloaded ikasiker.pdf to /tmp.');
+        } catch (err) {
+            console.error('Failed to download PDF:', err);
+            process.exit(1);
+        }
+    } else {
+        console.log('ikasiker.pdf already exists in /tmp.');
+    }
+
     const browser = await chromium.launch({ headless: false, slowMo: 1000 });
     const context = await browser.newContext({
         viewport: { width: 1438, height: 1148 },
@@ -49,7 +86,7 @@ const fs = require('fs');
     });
 
     // Upload the file
-    await page.locator('#file-upload-input-inline').setInputFiles('/tmp/ikasiker.pdf');
+    await page.locator('#file-upload-input-inline').setInputFiles(PDF_DEST);
 
 
     // Click and fill the description field
