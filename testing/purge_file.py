@@ -34,7 +34,7 @@ from chromadb.config import Settings as ChromaSettings
 
 
 # Paths (adjust if your deployment differs)
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "lamb-kb-server-stable" / "backend" / "data"
 SQLITE_DB_PATH = DATA_DIR / "lamb-kb-server.db"
 CHROMA_DB_PATH = DATA_DIR / "chromadb"
