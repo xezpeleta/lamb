@@ -96,15 +96,13 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-origins = ["*"]
-
-
+# Minimal CORS: allow everything (no credentials). Keep it tiny.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    # Note: allow_credentials intentionally omitted (defaults to False) so '*' is valid.
 )
 
 
@@ -174,9 +172,10 @@ async def get_models(request: Request):
 
     # Generate Request ID and set headers
     request_id = f"req_{uuid.uuid4()}"
+    # CORSMiddleware will set the correct Access-Control-Allow-Origin header.
+    # We only need to expose additional headers (already configured globally) and
+    # include request-specific IDs here.
     headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Expose-Headers": "X-Request-Id",
         "X-Request-Id": request_id,
         "OpenAI-Version": "2024-02-01"
     }

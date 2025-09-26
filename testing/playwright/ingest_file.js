@@ -39,7 +39,9 @@ function downloadPDF(url, dest) {
         console.log('ikasiker.pdf already exists in /tmp.');
     }
 
-    const browser = await chromium.launch({ headless: false, slowMo: 1000 });
+    const SLOW_MO = process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : 500; // slower to observe steps
+
+    const browser = await chromium.launch({ headless: false, slowMo: SLOW_MO });
     const context = await browser.newContext({
         viewport: { width: 1438, height: 1148 },
     });

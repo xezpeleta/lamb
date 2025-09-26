@@ -438,7 +438,7 @@
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` // Add Authorization header
                 },
-                withCredentials: true // Assuming session cookies are needed
+                // Removed withCredentials to allow wildcard CORS (no credentialed requests needed; we use Bearer token)
             });
             
             console.log('Query response received:', response.data);

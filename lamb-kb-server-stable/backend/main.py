@@ -126,12 +126,13 @@ static_dir = IngestionService.STATIC_DIR
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # Add CORS middleware
+# Minimal CORS: wildcard origins, no credentials (so '*' is valid with browsers)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development - restrict in production
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    # allow_credentials omitted (defaults False)
 )
 
 
