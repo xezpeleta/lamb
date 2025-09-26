@@ -124,6 +124,16 @@ class PluginIngestFileResponse(BaseModel):
     # Assuming response from kb_server_manager.plugin_ingest_file
     status: str
 
+class BasePluginIngestRequest(BaseModel):
+    """Request body for plugin base ingestion (no direct file upload from client).
+
+    The frontend sends JSON with the plugin name and arbitrary parameters.
+    We create a synthetic in-memory file so we can re-use the existing file
+    ingestion pipeline (KB server currently only exposes ingest-file).
+    """
+    plugin_name: str = Field(..., description="Name of the ingestion plugin to run")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Plugin parameters")
+
 class ErrorResponseDetail(BaseModel):
     detail: Union[str, Dict[str, Any]]
 
@@ -1395,6 +1405,79 @@ async def plugin_ingest_file(
             status_code=500,
             detail=f"Error ingesting file with plugin: {str(e)}"
         )
+
+
+@router.post(
+    "/kb/{kb_id}/plugin-ingest-base",
+    response_model=Union[PluginIngestFileResponse, KnowledgeBaseServerOfflineResponse],
+    tags=["Knowledge Base Management", "Plugins", "kb-server-connection"],
+    summary="Run base (no-file) ingestion plugin",
+    description="""Run an ingestion plugin that does not require a user-uploaded file (e.g. remote resource ingestion).\n\nThis endpoint fabricates a tiny in-memory placeholder file so it can leverage the existing file-based ingestion path in the KB server (`/collections/{id}/ingest-file`). For plugins like `youtube_transcript_ingest` that can optionally read a local file of URLs, we embed the provided `video_url` (if any) as the file content so either code path works.\n\nExample Request:\n```bash\ncurl -X POST 'http://localhost:8000/creator/knowledgebases/kb/1/plugin-ingest-base' \\n  -H 'Authorization: Bearer <user_token>' \\n  -H 'Content-Type: application/json' \\n  -d '{\n    "plugin_name": "youtube_transcript_ingest",\n    "parameters": {"video_url": "https://www.youtube.com/watch?v=XXXX", "language": "es"}\n  }'\n```\n""",
+    dependencies=[Depends(security)],
+    responses={
+        200: {"description": "Base ingestion started successfully"},
+        401: {"model": ErrorResponseDetail, "description": "Authentication failed"},
+        404: {"model": ErrorResponseDetail, "description": "Knowledge Base or Plugin not found"},
+        500: {"model": ErrorResponseDetail, "description": "Internal server error or KB server communication failure"},
+        503: {"model": KnowledgeBaseServerOfflineResponse, "description": "Knowledge Base server is offline or not configured"}
+    }
+)
+async def plugin_ingest_base(
+    kb_id: str,
+    body: BasePluginIngestRequest,
+    request: Request
+):
+    """Run an ingestion plugin without a direct file upload from the user.\n\nCreates an in-memory placeholder text file (optionally containing URL lines if helpful) and then reuses the existing `plugin_ingest_file` pipeline so we do not need to duplicate ownership / permission checks or low-level multipart handling logic in the KB server layer."""
+    logger.info(f"Base ingestion requested for KB {kb_id} using plugin {body.plugin_name} with params: {body.parameters}")
+    try:
+        if not await kb_server_manager.is_kb_server_available():
+            logger.error("KB server is not available for base ingestion")
+            raise HTTPException(status_code=503, detail="KB server is not available")
+
+        creator_user = await authenticate_creator_user(request)
+
+        # Build placeholder file content (embed video_url if present so plugin can fallback to file parsing)
+        content_bytes = b""
+        if isinstance(body.parameters, dict):
+            video_url = body.parameters.get("video_url")
+            if video_url:
+                try:
+                    content_bytes = (str(video_url).strip() + "\n").encode("utf-8")
+                except Exception:
+                    content_bytes = b""
+
+        # Create a minimal in-memory file object compatible with kb_server_manager expectations
+        import io as _io
+
+        class InMemoryUploadFile:
+            def __init__(self, filename: str, data: bytes, content_type: str = "text/plain"):
+                self.filename = filename
+                self._data = data
+                self.file = _io.BytesIO(data)
+                self.content_type = content_type
+
+            async def read(self):  # Matches UploadFile.read signature
+                return self._data
+
+        placeholder_file = InMemoryUploadFile(
+            filename="base_ingest_placeholder.txt",
+            data=content_bytes,
+            content_type="text/plain"
+        )
+
+        result = await kb_server_manager.plugin_ingest_file(
+            kb_id=kb_id,
+            file=placeholder_file,
+            plugin_name=body.plugin_name,
+            plugin_params=body.parameters or {},
+            creator_user=creator_user
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error running base ingestion plugin: {e}")
+        raise HTTPException(status_code=500, detail=f"Error running base ingestion plugin: {e}")
 
 
 # --- Query Plugins Endpoint ---

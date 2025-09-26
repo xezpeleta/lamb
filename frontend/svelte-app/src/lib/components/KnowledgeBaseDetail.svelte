@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { getKnowledgeBaseDetails, getIngestionPlugins, uploadFileWithPlugin } from '$lib/services/knowledgeBaseService';
+    import { getKnowledgeBaseDetails, getIngestionPlugins, uploadFileWithPlugin, runBaseIngestionPlugin } from '$lib/services/knowledgeBaseService';
     import { _ } from '$lib/i18n';
     import { page } from '$app/stores';
     import axios from 'axios'; // Import axios
@@ -78,6 +78,14 @@
     let pluginParams = $state({});
     /** @type {File | null} */
     let selectedFile = $state(null);
+    // Derived flag: treat only explicit 'file-ingest' as requiring a file. Other kinds (base-ingest, remote-ingest, etc.) run without file upload.
+    $effect(() => {
+        // If switching to a non file plugin, clear any previous file selection requirement
+        if (selectedPlugin && selectedPlugin.kind && selectedPlugin.kind !== 'file-ingest') {
+            // Non-file plugin: ensure selectedFile isn't blocking UI logic
+            // (We purposely do NOT reset selectedFile so user can switch back without reselecting.)
+        }
+    });
     let uploading = $state(false);
     let uploadError = $state('');
     let uploadSuccess = $state(false);
@@ -340,6 +348,47 @@
             }
         } finally {
             uploading = false;
+        }
+    }
+
+    /** Run a non-file (base / remote) ingestion plugin */
+    async function runBaseIngestion() {
+        console.log('runBaseIngestion invoked for plugin:', selectedPlugin?.name, 'params:', pluginParams);
+        if (!selectedPlugin) {
+            uploadError = 'Please select a plugin.';
+            return;
+        }
+        // Guard: if plugin actually requires a file (defensive)
+        if (selectedPlugin.kind === 'file-ingest') {
+            uploadError = 'Selected plugin requires a file.';
+            return;
+        }
+        uploading = true;
+        uploadError = '';
+        uploadSuccess = false;
+        try {
+            const result = await runBaseIngestionPlugin(kbId, selectedPlugin.name, pluginParams);
+            console.log('Base ingestion result:', result);
+            uploadSuccess = true;
+            await loadKnowledgeBase(kbId);
+        } catch (err) {
+            console.error('Error running base ingestion:', err);
+            uploadError = err instanceof Error ? err.message : 'Failed to run ingestion plugin';
+        } finally {
+            uploading = false;
+        }
+    }
+
+    /** Decide which ingestion path to use based on plugin kind */
+    function handleSubmitIngestion() {
+        if (!selectedPlugin) {
+            uploadError = 'Please select a plugin.';
+            return;
+        }
+        if (selectedPlugin.kind === 'file-ingest') {
+            uploadFile();
+        } else {
+            runBaseIngestion();
         }
     }
     
@@ -640,9 +689,12 @@
 
                     <!-- Ingest Content Panel -->
                     {#if activeTab === 'ingest'}
+                        {#key selectedPlugin?.kind}
                         <div class="bg-gray-50 -mx-4 -my-5 sm:-mx-6 px-4 py-5 sm:px-6">
                             <h4 class="text-md font-medium text-gray-700 mb-4">
-                                {$_('knowledgeBases.fileUpload.sectionTitle', { default: 'Upload and Ingest New File' })}
+                                {selectedPlugin?.kind === 'file-ingest'
+                                    ? $_('knowledgeBases.fileUpload.sectionTitle', { default: 'Upload and Ingest New File' })
+                                    : $_('knowledgeBases.fileUpload.sectionTitleBase', { default: 'Configure and Run Ingestion' })}
                             </h4>
                             
                             {#if loadingPlugins}
@@ -653,7 +705,7 @@
                                 <!-- ... no plugins message ... -->
                             {:else}
                                 <!-- Ingestion Form -->
-                                <form onsubmit={(e) => { e.preventDefault(); uploadFile(); }} class="space-y-6">
+                                <form onsubmit={(e) => { e.preventDefault(); handleSubmitIngestion(); }} class="space-y-6">
                                     <!-- Success message -->
                                     {#if uploadSuccess}
                                         <div class="p-4 bg-green-50 border border-green-100 rounded">
@@ -672,26 +724,28 @@
                                         </div>
                                     {/if}
                                 
-                                    <!-- File selection -->
-                                    <div>
-                                        <label for="file-upload-input-inline" class="block text-sm font-medium text-gray-700">
-                                            {$_('knowledgeBases.fileUpload.fileLabel', { default: 'Select File' })}
-                                        </label>
-                                        <div class="mt-1 flex items-center">
-                                            <input
-                                                id="file-upload-input-inline"
-                                                type="file"
-                                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#2271b3] file:text-white hover:file:bg-[#195a91]"
-                                                style="file:background-color: #2271b3;"
-                                                onchange={handleFileSelect}
-                                            />
+                                    <!-- File selection (only for file-ingest plugins) -->
+                                    {#if selectedPlugin?.kind === 'file-ingest'}
+                                        <div>
+                                            <label for="file-upload-input-inline" class="block text-sm font-medium text-gray-700">
+                                                {$_('knowledgeBases.fileUpload.fileLabel', { default: 'Select File' })}
+                                            </label>
+                                            <div class="mt-1 flex items-center">
+                                                <input
+                                                    id="file-upload-input-inline"
+                                                    type="file"
+                                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#2271b3] file:text-white hover:file:bg-[#195a91]"
+                                                    style="file:background-color: #2271b3;"
+                                                    onchange={handleFileSelect}
+                                                />
+                                            </div>
+                                            {#if selectedFile}
+                                                <p class="mt-2 text-sm text-gray-500">
+                                                    {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                                                </p>
+                                            {/if}
                                         </div>
-                                        {#if selectedFile}
-                                            <p class="mt-2 text-sm text-gray-500">
-                                                {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                                            </p>
-                                        {/if}
-                                    </div>
+                                    {/if}
                                     
                                     <!-- Plugin selection -->
                                     <div>
@@ -803,23 +857,25 @@
 
                                     <!-- Submit Button -->
                                     <div class="pt-4 flex justify-end">
-                                        <button 
+                                        <button
                                             type="submit"
-                                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2271b3] hover:bg-[#195a91] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2271b3]"
+                                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2271b3] hover:bg-[#195a91] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2271b3] disabled:opacity-50"
                                             style="background-color: #2271b3;"
-                                            disabled={!selectedFile || !selectedPlugin || uploading}
+                                            disabled={(!selectedPlugin) || uploading || (selectedPlugin?.kind === 'file-ingest' && !selectedFile)}
                                         >
                                             {#if uploading}
-                                                <!-- ... uploading indicator ... -->
                                                 {$_('knowledgeBases.fileUpload.uploadingButton', { default: 'Uploading...' })}
-                                            {:else}
+                                            {:else if selectedPlugin?.kind === 'file-ingest'}
                                                 {$_('knowledgeBases.fileUpload.uploadButton', { default: 'Upload File' })}
+                                            {:else}
+                                                {$_('knowledgeBases.fileUpload.runButton', { default: 'Run Ingestion' })}
                                             {/if}
                                         </button>
                                     </div>
                                 </form>
                             {/if}
                         </div>
+                        {/key}
                     {/if}
 
                     <!-- Query Tab Content -->

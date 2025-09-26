@@ -18,3 +18,4 @@ firecrawl>=1.7.0
 pathlib>=1.0.1
 uuid>=1.30
 markdown2
+youtube-transcript-api==0.6.3
