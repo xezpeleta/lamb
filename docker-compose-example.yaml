@@ -91,7 +91,8 @@ services:
     depends_on:
       - openwebui
       - kb
-      - frontend-build
+      - frontend-build:
+          condition: service_completed_successfully
     command: >
       sh -lc "python -m pip install --upgrade pip && \
       pip install -r requirements.txt && \
@@ -110,6 +111,8 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+      - frontend-build:
+          condition: service_completed_successfully
     command: >
       sh -lc "test -f static/config.js || cp static/config.js.sample static/config.js; \
       npm install; \
