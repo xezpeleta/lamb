@@ -10,6 +10,8 @@ When creating or updating GitHub issues, use `--body-file` instead of `--body` t
 
 IMPORTANT: NEVER use heredoc syntax (<<EOF ... EOF) for issue bodies or generating the file content, as it can lead to too-long lines in bash and cause issues.
 
+Again, ALWAYS create temporary markdown files without resorting to heredoc syntax.
+
 ## Workflow:
 
 1. Create temporary markdown file with issue content
