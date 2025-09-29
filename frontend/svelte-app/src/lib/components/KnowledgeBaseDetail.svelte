@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { getKnowledgeBaseDetails, getIngestionPlugins, uploadFileWithPlugin, runBaseIngestionPlugin } from '$lib/services/knowledgeBaseService';
+    import { getKnowledgeBaseDetails, getIngestionPlugins, uploadFileWithPlugin, runBaseIngestionPlugin, deleteKnowledgeBaseFile } from '$lib/services/knowledgeBaseService';
     import { _ } from '$lib/i18n';
     import { page } from '$app/stores';
     import axios from 'axios'; // Import axios
@@ -214,11 +214,19 @@
      * Handle file delete
      * @param {string} fileId - ID of the file to delete
      */
-    function handleDeleteFile(fileId) {
-        // This would typically open a confirmation dialog and then call a delete API
-        console.log(`Delete file requested: ${fileId}`);
-        // For now, just log the action
-        alert($_('knowledgeBases.detail.fileDeleteNotImplemented', { default: 'File delete functionality not yet implemented' }));
+    async function handleDeleteFile(fileId) {
+        if (!kbId) return;
+        if (!confirm($_('knowledgeBases.detail.confirmDelete', { default: 'Delete this file and its embeddings? This cannot be undone.' }))) {
+            return;
+        }
+        try {
+            await deleteKnowledgeBaseFile(kbId, fileId, true);
+            // Refresh list
+            await loadKnowledgeBase(kbId);
+        } catch (err) {
+            console.error('Failed to delete file', err);
+            alert(err instanceof Error ? err.message : 'File deletion failed');
+        }
     }
 
     // --- Ingestion Functions (Moved from Modal) ---
