@@ -7,7 +7,10 @@ A lightweight, single-file web UI to inspect the persisted ChromaDB used by Lamb
 Features:
  - Lists available Chroma collections in a combo box
  - Displays (paginated) documents/embeddings for a selected collection
- - Shows id, metadata (JSON), and a truncated document preview
+ - Shows id, content type (file/video), metadata (JSON), and document preview
+ - Supports both traditional file content and YouTube video transcripts
+ - Shows content statistics (number of files vs videos)
+ - Color-coded content type indicators
  - Allows downloading the full raw document text for a given embedding id
 
 Usage:
@@ -187,6 +190,59 @@ def fetch_page(collection, page: int, page_size: int) -> Dict[str, Any]:
     }
 
 
+def analyze_content_types(metadatas: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Analyze metadata to determine content types (files vs videos)."""
+    stats = {"files": 0, "videos": 0, "other": 0}
+    seen_sources = set()
+    
+    for meta in metadatas:
+        if not meta or not isinstance(meta, dict):
+            continue
+            
+        # Handle both file-based and video-based content
+        source = meta.get("source", "")
+        source_url = meta.get("source_url", "")
+        video_id = meta.get("video_id", "")
+        ingestion_plugin = meta.get("ingestion_plugin", "")
+        
+        # Determine the unique identifier for this content
+        unique_source = source_url or source or f"video:{video_id}"
+        
+        if unique_source and unique_source not in seen_sources:
+            if ingestion_plugin == "youtube_transcript_ingest" or video_id:
+                stats["videos"] += 1
+            elif source:
+                stats["files"] += 1
+            else:
+                stats["other"] += 1
+            seen_sources.add(unique_source)
+    
+    return stats
+
+
+def enhance_metadata_display(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Enhance metadata with content type information for display."""
+    enhanced = metadata.copy()
+    
+    # Determine content type
+    video_id = metadata.get("video_id", "")
+    ingestion_plugin = metadata.get("ingestion_plugin", "")
+    
+    if ingestion_plugin == "youtube_transcript_ingest" or video_id:
+        enhanced["_content_type"] = "video"
+        enhanced["_display_type"] = "📹 Video"
+        if video_id:
+            enhanced["_video_title"] = f"YouTube: {video_id}"
+        language = metadata.get("language", "")
+        if language:
+            enhanced["_video_title"] = enhanced.get("_video_title", "") + f" [{language}]"
+    else:
+        enhanced["_content_type"] = "file"
+        enhanced["_display_type"] = "📄 File"
+        
+    return enhanced
+
+
 def get_collection(client, name: str):
     return client.get_collection(name=name)
 
@@ -195,8 +251,8 @@ def get_collection(client, name: str):
 # HTML Template
 # ---------------------------------------------------------------------------
 TEMPLATE = """<!DOCTYPE html>
-<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<title>ChromaDB Browser</title>\n<style>\nbody { font-family: system-ui, Arial, sans-serif; margin: 1.5rem; background:#f7f9fb; }\nh1 { font-size: 1.4rem; margin-bottom: .75rem; }\nform, .panel { background:#fff; padding:1rem 1.25rem; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }\nselect { padding:.4rem .5rem; font-size:.95rem; }\n.table { width:100%; border-collapse: collapse; margin-top:1rem; }\n.table th, .table td { text-align:left; border-bottom:1px solid #e3e7ec; padding:.5rem .5rem; vertical-align: top; font-size:.8rem;}\n.table th { background:#eef2f6; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; }\n.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; background:#f3f6fa; padding:.4rem .5rem; border-radius:4px; }\n.meta { max-width: 340px; }\n.doc-preview { max-width:400px; }\n.badge { display:inline-block; background:#3850eb; color:#fff; padding:2px 6px; border-radius:12px; font-size:.65rem; margin-left:.5rem;}\nnav.pager a { margin:0 .25rem; text-decoration:none; padding:.35rem .55rem; border:1px solid #d0d7de; border-radius:4px; color:#24292f; background:#fff;}\nnav.pager a.current { background:#24292f; color:#fff; pointer-events:none; }\nnav.pager { margin-top:1rem; }\nfooter { margin-top:2rem; font-size:.7rem; color:#6a737d; }\n.flash { color:#d6336c; font-weight:600; }\n</style>\n<script>\nfunction onCollectionChange(sel){ sel.form.submit(); }\n</script>\n</head>\n<body>\n  <h1>ChromaDB Browser <span class=\"badge\">Read‑only</span></h1>
-  <form method=\"get\" class=\"panel\">\n    <label for=\"collection\"><strong>Collection:</strong></label>\n    <select name=\"collection\" id=\"collection\" onchange=\"onCollectionChange(this)\">\n      <option value=\"\">-- choose a collection --</option>\n      {% for c in collections %}\n        <option value=\"{{c.name}}\" {% if selected_collection == c.name %}selected{% endif %}>{{c.name}}</option>\n      {% endfor %}\n    </select>\n    <label style=\"margin-left:1rem;\">Page size: <input type=\"number\" name=\"page_size\" value=\"{{page_size}}\" min=\"10\" max=\"500\" style=\"width:5rem;\"/></label>\n    <noscript><button type=\"submit\">Go</button></noscript>\n  </form>\n  {% if error %}<p class=\"flash\">{{error}}</p>{% endif %}\n  {% if page_data and selected_collection %}\n    <div class=\"panel\" style=\"margin-top:1rem;\">\n      <h2 style=\"margin-top:0;\">Collection: {{selected_collection}}</h2>\n      <p style=\"margin:.25rem 0 1rem;\">Showing page {{page_data.page + 1}}{% if total_pages %} of {{total_pages}}{% endif %}. Total embeddings: {{page_data.total if page_data.total is not none else 'unknown'}}.</p>\n      <table class=\"table\">\n        <thead>\n          <tr><th style=\"width:140px;\">ID</th><th>Metadata</th><th>Document Preview</th></tr>\n        </thead>\n        <tbody>\n        {% for rid, meta, doc in rows %}\n          <tr>\n            <td><div class=\"code\" style=\"font-size:.65rem;\">{{rid}}</div>\n              <div style=\"margin-top:.3rem;\"><a href=\"?collection={{selected_collection}}&download_id={{rid}}\" title=\"Download full document\">download</a></div></td>\n            <td class=\"meta\"><div class=\"code\" style=\"font-size:.65rem;\">{{meta}}</div></td>\n            <td class=\"doc-preview\"><div class=\"code\" style=\"font-size:.65rem;\">{{doc}}</div></td>\n          </tr>\n        {% endfor %}\n        {% if rows|length == 0 %}<tr><td colspan=3><em>No rows on this page.</em></td></tr>{% endif %}\n        </tbody>\n      </table>\n      {% if total_pages and total_pages > 1 %}\n        <nav class=\"pager\">\n          {% for p in range(total_pages) %}\n            <a href=\"?collection={{selected_collection}}&page={{p}}&page_size={{page_size}}\" class=\"{% if p == page_data.page %}current{% endif %}\">{{p+1}}</a>\n          {% endfor %}\n        </nav>\n      {% endif %}\n    </div>\n  {% endif %}\n  <footer>ChromaDB Browser &mdash; Debug utility. Large collections may take time to display.</footer>\n</body>\n</html>"""
+<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<title>ChromaDB Browser</title>\n<style>\nbody { font-family: system-ui, Arial, sans-serif; margin: 1.5rem; background:#f7f9fb; }\nh1 { font-size: 1.4rem; margin-bottom: .75rem; }\nform, .panel { background:#fff; padding:1rem 1.25rem; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }\nselect { padding:.4rem .5rem; font-size:.95rem; }\n.table { width:100%; border-collapse: collapse; margin-top:1rem; }\n.table th, .table td { text-align:left; border-bottom:1px solid #e3e7ec; padding:.5rem .5rem; vertical-align: top; font-size:.8rem;}\n.table th { background:#eef2f6; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; }\n.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; background:#f3f6fa; padding:.4rem .5rem; border-radius:4px; }\n.meta { max-width: 340px; }\n.doc-preview { max-width:400px; }\n.badge { display:inline-block; background:#3850eb; color:#fff; padding:2px 6px; border-radius:12px; font-size:.65rem; margin-left:.5rem;}\n.stats { display:inline-block; background:#059669; color:#fff; padding:2px 6px; border-radius:12px; font-size:.65rem; margin-left:.25rem;}\n.content-type { display:inline-block; padding:2px 6px; border-radius:4px; font-size:.65rem; margin-right:.25rem; }\n.content-type.video { background:#7c3aed; color:#fff; }\n.content-type.file { background:#0891b2; color:#fff; }\nnav.pager a { margin:0 .25rem; text-decoration:none; padding:.35rem .55rem; border:1px solid #d0d7de; border-radius:4px; color:#24292f; background:#fff;}\nnav.pager a.current { background:#24292f; color:#fff; pointer-events:none; }\nnav.pager { margin-top:1rem; }\nfooter { margin-top:2rem; font-size:.7rem; color:#6a737d; }\n.flash { color:#d6336c; font-weight:600; }\n</style>\n<script>\nfunction onCollectionChange(sel){ sel.form.submit(); }\n</script>\n</head>\n<body>\n  <h1>ChromaDB Browser <span class=\"badge\">Read‑only</span></h1>
+  <form method=\"get\" class=\"panel\">\n    <label for=\"collection\"><strong>Collection:</strong></label>\n    <select name=\"collection\" id=\"collection\" onchange=\"onCollectionChange(this)\">\n      <option value=\"\">-- choose a collection --</option>\n      {% for c in collections %}\n        <option value=\"{{c.name}}\" {% if selected_collection == c.name %}selected{% endif %}>{{c.name}}</option>\n      {% endfor %}\n    </select>\n    <label style=\"margin-left:1rem;\">Page size: <input type=\"number\" name=\"page_size\" value=\"{{page_size}}\" min=\"10\" max=\"500\" style=\"width:5rem;\"/></label>\n    <noscript><button type=\"submit\">Go</button></noscript>\n  </form>\n  {% if error %}<p class=\"flash\">{{error}}</p>{% endif %}\n  {% if page_data and selected_collection %}\n    <div class=\"panel\" style=\"margin-top:1rem;\">\n      <h2 style=\"margin-top:0;\">Collection: {{selected_collection}}</h2>\n      <p style=\"margin:.25rem 0 1rem;\">Showing page {{page_data.page + 1}}{% if total_pages %} of {{total_pages}}{% endif %}. Total embeddings: {{page_data.total if page_data.total is not none else 'unknown'}}.\n        {% if content_stats %}<span class=\"stats\">{{content_stats.files}} files</span><span class=\"stats\">{{content_stats.videos}} videos</span>{% if content_stats.other > 0 %}<span class=\"stats\">{{content_stats.other}} other</span>{% endif %}{% endif %}</p>\n      <table class=\"table\">\n        <thead>\n          <tr><th style=\"width:140px;\">ID</th><th style=\"width:60px;\">Type</th><th>Metadata</th><th>Document Preview</th></tr>\n        </thead>\n        <tbody>\n        {% for rid, content_type, display_type, meta, doc in rows %}\n          <tr>\n            <td><div class=\"code\" style=\"font-size:.65rem;\">{{rid}}</div>\n              <div style=\"margin-top:.3rem;\"><a href=\"?collection={{selected_collection}}&download_id={{rid}}\" title=\"Download full document\">download</a></div></td>\n            <td><span class=\"content-type {{content_type}}\">{{display_type}}</span></td>\n            <td class=\"meta\"><div class=\"code\" style=\"font-size:.65rem;\">{{meta}}</div></td>\n            <td class=\"doc-preview\"><div class=\"code\" style=\"font-size:.65rem;\">{{doc}}</div></td>\n          </tr>\n        {% endfor %}\n        {% if rows|length == 0 %}<tr><td colspan=4><em>No rows on this page.</em></td></tr>{% endif %}\n        </tbody>\n      </table>\n      {% if total_pages and total_pages > 1 %}\n        <nav class=\"pager\">\n          {% for p in range(total_pages) %}\n            <a href=\"?collection={{selected_collection}}&page={{p}}&page_size={{page_size}}\" class=\"{% if p == page_data.page %}current{% endif %}\">{{p+1}}</a>\n          {% endfor %}\n        </nav>\n      {% endif %}\n    </div>\n  {% endif %}\n  <footer>ChromaDB Browser &mdash; Debug utility. Large collections may take time to display.</footer>\n</body>\n</html>"""
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -300,16 +356,26 @@ def index():
             ids = page_data.get("ids", [])
             metas = page_data.get("metadatas", [])
             docs = page_data.get("documents", [])
+            
+            # Analyze content types for stats
+            content_stats = analyze_content_types(metas)
+            
             import sys
             print(f"[chroma_viewer] DEBUG: Starting document preview rendering for {len(ids)} ids", file=sys.stderr)
             for i, rid in enumerate(ids):
                 print(f"[chroma_viewer] DEBUG: Processing id {rid}", file=sys.stderr)
                 meta = metas[i] if i < len(metas) else {}
+                
+                # Enhance metadata with content type info
+                enhanced_meta = enhance_metadata_display(meta)
+                content_type = enhanced_meta.get("_content_type", "file")
+                display_type = enhanced_meta.get("_display_type", "📄 File")
+                
                 try:
-                    meta_json = json.dumps(meta, ensure_ascii=False, indent=None, separators=(",", ":"))
+                    meta_json = json.dumps(enhanced_meta, ensure_ascii=False, indent=None, separators=(",", ":"))
                 except Exception as e:
                     print(f"[chroma_viewer] ERROR: Failed to serialize metadata for id {rid}: {e}", file=sys.stderr)
-                    meta_json = str(meta)
+                    meta_json = str(enhanced_meta)
                 if isinstance(meta_json, str) and len(meta_json) > 400:
                     meta_json = meta_json[:397] + "..."
                 doc = docs[i] if i < len(docs) else ""
@@ -327,7 +393,7 @@ def index():
                 except Exception as e:
                     print(f"[chroma_viewer] ERROR: Exception during doc normalization for id {rid}: {e}", file=sys.stderr)
                     doc = f"<error: {e}>"
-                rows.append((rid, meta_json, doc))
+                rows.append((rid, content_type, display_type, meta_json, doc))
         except Exception as e:  # pragma: no cover - runtime browse errors
             error = f"Error loading collection (NEW)'{selected_collection}': {e}"[:500]
             selected_collection = None
@@ -341,6 +407,7 @@ def index():
         page_size=page_size,
         error=error,
         total_pages=total_pages,
+        content_stats=content_stats if 'content_stats' in locals() else None,
     )
 
 
