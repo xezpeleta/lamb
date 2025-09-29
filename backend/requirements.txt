@@ -6,7 +6,8 @@ python-socketio==5.11.2
 grpcio==1.64.1
 
 passlib==1.7.4
-passlib[bcrypt]
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0
 
 PyJWT[crypto]
 
