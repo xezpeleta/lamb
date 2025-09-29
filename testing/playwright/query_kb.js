@@ -43,9 +43,9 @@ const fs = require('fs');
     console.warn('Query results heading not detected within timeout.');
   }
 
-  // Screenshots for debugging (before and after results)
-  await page.screenshot({ path: 'query_kb.png' });
-  try { await page.screenshot({ path: 'query_kb_results.png' }); } catch {}
+  // Screenshots for debugging (before and after results). Full viewport to capture more context
+  // await page.screenshot({ path: 'query_kb.png', fullPage: true });
+  try { await page.screenshot({ path: 'query_kb_results.png', fullPage: true }); } catch {}
 
   const corsErrors = errors.filter(e => /CORS|Access-Control-Allow-Origin|credentials mode/.test(e));
   if (corsErrors.length) {

@@ -41,6 +41,20 @@ router = APIRouter(
     dependencies=[Depends(verify_token)]
 )
 
+@router.delete(
+    "/{collection_id}",
+    summary="Delete collection",
+    description="Delete a collection (Chroma, files, DB metadata).",
+    tags=["Collections"],
+    responses={
+        200: {"description": "Collection deleted"},
+        404: {"description": "Collection not found"},
+        500: {"description": "Deletion failed"}
+    }
+)
+async def delete_collection(collection_id: int, db: Session = Depends(get_db)):
+    return CollectionsService.delete_collection(collection_id, db)
+
 # Helper function to get and validate collection existence in both databases
 def _get_and_validate_collection(db: Session, collection_id: int):
     """
@@ -921,6 +935,28 @@ async def list_files(
     """
     # Use CollectionsService which is already imported
     return CollectionsService.list_files(collection_id, db, status)
+
+@router.delete(
+    "/{collection_id}/files/{file_id}",
+    summary="Delete a file from a collection (embeddings + registry + filesystem)",
+    tags=["Files"],
+    responses={
+        200: {"description": "File deleted"},
+        404: {"description": "Collection or file not found"},
+        500: {"description": "Deletion failed"}
+    }
+)
+async def delete_file(
+    collection_id: int,
+    file_id: int,
+    hard: bool = Query(True, description="Hard delete (remove DB row). If false, mark status=deleted."),
+    db: Session = Depends(get_db)
+):
+    """Delete a file and its associated embeddings.
+
+    Hard delete removes the database row. Soft delete only updates status to 'deleted'.
+    """
+    return CollectionsService.delete_file(collection_id, file_id, db, hard_delete=hard)
 
 # Note: The endpoint below does NOT use the /collections prefix from the router
 @router.put(

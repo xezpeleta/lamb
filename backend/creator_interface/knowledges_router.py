@@ -55,6 +55,9 @@ class KnowledgeBaseDeleteResponse(BaseModel):
     kb_id: str
     status: str = "success"
     message: str = "Knowledge base deleted successfully"
+    deleted_embeddings: Optional[int] = None
+    removed_files: Optional[List[Any]] = None
+    collection_name: Optional[str] = None
 
 # Define the structure for a single query result item
 class QueryResultItem(BaseModel):
