@@ -17,5 +17,5 @@ openai>=1.0.0
 # Removed duplicate firecrawl line (already pinned above)
 # pathlib and uuid are in the Python standard library; no need to install separately.
 markdown2
-# Align with markitdown[all] which requires youtube-transcript-api~=1.0.0
-youtube-transcript-api~=1.0.0
+# YouTube video and subtitle extraction
+yt-dlp>=2024.1.1

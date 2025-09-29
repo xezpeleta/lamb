@@ -8,7 +8,8 @@ ingestion plugin architecture used by the LAMB Knowledge Base Server.
 Features:
  - Accepts a single YouTube URL (plugin param: video_url) or a text file whose
    first non-empty line(s) contain YouTube URLs (one per line)
- - Fetches transcript using youtube-transcript-api directly (no external CLI)
+ - Fetches transcript using yt-dlp for robust subtitle extraction
+ - Supports both manual and automatic captions from YouTube
  - Chunks transcript pieces by target duration (default 60s)
  - Cleans text and preserves original raw text per piece
  - Returns standard chunk objects with rich metadata for downstream storage
@@ -38,14 +39,10 @@ from typing import Dict, List, Any, Optional, Iterable
 from datetime import datetime
 
 try:
-    from youtube_transcript_api import (
-        NoTranscriptFound,
-        TranscriptsDisabled,
-        YouTubeTranscriptApi,
-    )
-    _YT_AVAILABLE = True
+    import yt_dlp
+    _YT_DLP_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
-    _YT_AVAILABLE = False
+    _YT_DLP_AVAILABLE = False
 
 from .base import IngestPlugin, PluginRegistry
 
@@ -115,25 +112,132 @@ def _chunk_transcript(pieces: List[Dict[str, Any]], chunk_duration: float) -> Li
 
 
 def _fetch_transcript(video_id: str, languages: Iterable[str], proxy_url: Optional[str]) -> List[Dict[str, Any]]:
-    """Fetch raw transcript pieces using youtube-transcript-api."""
-    if not _YT_AVAILABLE:
+    """Fetch raw transcript pieces using yt-dlp."""
+    if not _YT_DLP_AVAILABLE:
         raise ImportError(
-            'youtube-transcript-api not installed. Install with "pip install youtube-transcript-api".'
+            'yt-dlp not installed. Install with "pip install yt-dlp".'
         )
 
-    proxies = None
+    # Configure yt-dlp options
+    ydl_opts = {
+        'writesubtitles': True,
+        'writeautomaticsub': True,
+        'subtitleslangs': list(languages),
+        'skip_download': True,
+        'quiet': True,
+        'no_warnings': True,
+    }
+    
     if proxy_url:
-        proxies = {"http": proxy_url, "https": proxy_url}
+        ydl_opts['proxy'] = proxy_url
 
-    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies)
-    try:
-        transcript = transcript_list.find_transcript(list(languages))
-    except NoTranscriptFound:
-        # Fallback to English only
-        transcript = transcript_list.find_transcript(["en"])  # may raise again
+    # Try to extract subtitles using yt-dlp
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            # Extract video info and subtitles
+            info = ydl.extract_info(video_url, download=False)
+            
+            # Get available subtitles
+            subtitles = info.get('subtitles', {})
+            automatic_captions = info.get('automatic_captions', {})
+            
+            # Try requested languages first, then fall back to English, then any available
+            available_subs = None
+            for lang in languages:
+                if lang in subtitles:
+                    available_subs = subtitles[lang]
+                    break
+                elif lang in automatic_captions:
+                    available_subs = automatic_captions[lang]
+                    break
+            
+            # Fallback to English if requested language not found
+            if not available_subs:
+                if 'en' in subtitles:
+                    available_subs = subtitles['en']
+                elif 'en' in automatic_captions:
+                    available_subs = automatic_captions['en']
+                else:
+                    # Take the first available subtitle
+                    all_subs = {**subtitles, **automatic_captions}
+                    if all_subs:
+                        available_subs = list(all_subs.values())[0]
+            
+            if not available_subs:
+                raise ValueError("No subtitles available for this video")
+            
+            # Find the best subtitle format (prefer vtt, then srv3, then others)
+            subtitle_url = None
+            for sub in available_subs:
+                if sub['ext'] == 'vtt':
+                    subtitle_url = sub['url']
+                    break
+            
+            if not subtitle_url:
+                # Take the first available format
+                subtitle_url = available_subs[0]['url']
+            
+            # Download and parse the subtitle file
+            import requests
+            response = requests.get(subtitle_url, proxies={'http': proxy_url, 'https': proxy_url} if proxy_url else None)
+            response.raise_for_status()
+            
+            return _parse_vtt_content(response.text)
+            
+        except Exception as e:
+            raise ValueError(f"Failed to extract subtitles: {e}")
 
-    # Each element: {text, start, duration}
-    return transcript.fetch()
+
+def _parse_vtt_content(vtt_content: str) -> List[Dict[str, Any]]:
+    """Parse VTT subtitle content into transcript pieces."""
+    import re
+    
+    pieces = []
+    lines = vtt_content.split('\n')
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Look for timestamp lines (format: 00:00:00.000 --> 00:00:00.000)
+        timestamp_match = re.match(r'(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})', line)
+        if timestamp_match:
+            start_time = _timestamp_to_seconds(timestamp_match.group(1))
+            end_time = _timestamp_to_seconds(timestamp_match.group(2))
+            
+            # Collect text lines until we hit an empty line or another timestamp
+            text_lines = []
+            i += 1
+            while i < len(lines) and lines[i].strip() and not re.match(r'\d{2}:\d{2}:\d{2}\.\d{3}', lines[i]):
+                text_line = lines[i].strip()
+                # Remove VTT formatting tags
+                text_line = re.sub(r'<[^>]+>', '', text_line)
+                if text_line:
+                    text_lines.append(text_line)
+                i += 1
+            
+            if text_lines:
+                pieces.append({
+                    'text': ' '.join(text_lines),
+                    'start': start_time,
+                    'duration': end_time - start_time
+                })
+        else:
+            i += 1
+    
+    return pieces
+
+
+def _timestamp_to_seconds(timestamp: str) -> float:
+    """Convert VTT timestamp (HH:MM:SS.mmm) to seconds."""
+    import re
+    match = re.match(r'(\d{2}):(\d{2}):(\d{2})\.(\d{3})', timestamp)
+    if match:
+        hours, minutes, seconds, milliseconds = map(int, match.groups())
+        return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
+    return 0.0
 
 
 @PluginRegistry.register
@@ -147,7 +251,7 @@ class YouTubeTranscriptIngestPlugin(IngestPlugin):
 
     name = "youtube_transcript_ingest"
     kind = "remote-ingest"
-    description = "Ingest YouTube video transcripts via API with time-based chunking"
+    description = "Ingest YouTube video transcripts via yt-dlp with time-based chunking"
     # We allow providing a text file containing URLs; advertise txt support.
     supported_file_types = {"txt"}
 
@@ -216,9 +320,12 @@ class YouTubeTranscriptIngestPlugin(IngestPlugin):
                 continue  # skip invalid
             try:
                 pieces = _fetch_transcript(video_id, [language], proxy_url)
-            except (NoTranscriptFound, TranscriptsDisabled) as e:  # pragma: no cover
-                # Skip videos without transcripts
-                continue
+            except ValueError as e:
+                # Skip videos without transcripts or other extraction failures
+                if "No subtitles available" in str(e):
+                    continue
+                else:
+                    raise e
             except Exception as e:  # pragma: no cover
                 raise ValueError(f"Failed to fetch transcript for {url}: {e}")
 
