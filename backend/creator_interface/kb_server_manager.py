@@ -576,75 +576,88 @@ class KBServerManager:
             Dict with deletion status
         """
         logger.info(f"Deleting knowledge base {kb_id} for user {creator_user.get('email')}")
-        
-        # Ensure kb_id is properly formatted for the KB server
+
+        # Normalize kb_id (allow numeric strings)
         try:
-            # Try to convert to int if kb_id is a string representing a number
-            if kb_id.isdigit():
-                numeric_id = int(kb_id)
-                logger.info(f"Converting string ID '{kb_id}' to numeric ID {numeric_id}")
-                kb_id = str(numeric_id)  # Keep as string for URL but ensure it's a valid number
-        except (ValueError, AttributeError):
-            # If conversion fails, keep original id
-            logger.info(f"Using original ID format: {kb_id}")
-        
-        kb_server_url = f"{self.kb_server_url}/collections/{kb_id}"
-        
+            if isinstance(kb_id, str) and kb_id.isdigit():
+                kb_id = str(int(kb_id))
+        except Exception:
+            pass
+
+        collection_url = f"{self.kb_server_url}/collections/{kb_id}"
+        headers = self.get_auth_headers()
+
         try:
-            # Try to get collection details from KB server to verify ownership
             async with httpx.AsyncClient() as client:
-                logger.info(f"Getting collection details from KB server: {kb_server_url}")
-                headers = {
-                    "Authorization": f"Bearer {self.kb_server_token}"
-                }
-                
-                get_response = await client.get(kb_server_url, headers=headers)
-                
-                if get_response.status_code == 200:
-                    collection_data = get_response.json()
-                    logger.info(f"KB server collection data: {json.dumps(collection_data)}")
-                    
-                    # Check ownership
-                    if collection_data.get('owner') != str(creator_user.get('id')):
-                        logger.error(f"User {creator_user.get('email')} (ID: {creator_user.get('id')}) is not the owner of knowledge base {kb_id}")
-                        raise HTTPException(
-                            status_code=403,
-                            detail="You don't have permission to delete this knowledge base"
-                        )
-                    
-                    collection_name = collection_data.get('name', '')
-                    logger.info(f"Found knowledge base to delete: {collection_name}")
-                    
-                    # Use PATCH request with status=deleted
-                    headers["Content-Type"] = "application/json"
-                    logger.info(f"Attempting to mark collection as deleted using PATCH to {kb_server_url}")
-                    update_data = {"status": "deleted"}
-                    delete_response = await client.patch(kb_server_url, headers=headers, json=update_data)
-                    
-                    # If PATCH doesn't work, try a special DELETE endpoint as fallback
-                    if delete_response.status_code >= 400 and delete_response.status_code != 404:
-                        delete_url = f"{self.kb_server_url}/collections/{kb_id}/status"
-                        logger.info(f"PATCH failed, trying PUT to update status via {delete_url}")
-                        delete_response = await client.put(delete_url, headers=headers, params={"status": "deleted"})
-                    
-                    logger.info(f"KB server delete response status: {delete_response.status_code}")
-                    
-                    if delete_response.status_code in [200, 204, 202]:
-                        # Successfully deleted from KB server
-                        logger.info(f"Successfully deleted knowledge base {kb_id} from KB server")
-                        
-                        
-                        return {
-                        "message": "Knowledge base deleted",
-                        "id": kb_id
+                # 1. Retrieve collection to verify existence & ownership
+                logger.info(f"Verifying ownership before hard delete: {collection_url}")
+                get_resp = await client.get(collection_url, headers=headers)
+
+                if get_resp.status_code == 404:
+                    logger.error(f"Knowledge base with ID {kb_id} not found in KB server (already deleted?)")
+                    raise HTTPException(status_code=404, detail="Knowledge base not found")
+                if get_resp.status_code != 200:
+                    try:
+                        _d = get_resp.json()
+                        detail = _d.get('detail') if isinstance(_d, dict) else str(_d)
+                    except Exception:
+                        detail = get_resp.text or f"HTTP {get_resp.status_code}"
+                    raise HTTPException(status_code=get_resp.status_code, detail=f"KB server error fetching collection: {detail}")
+
+                collection_data = get_resp.json()
+                owner_id = str(creator_user.get('id'))
+                if collection_data.get('owner') != owner_id:
+                    logger.error(f"Ownership mismatch: user {owner_id} != collection owner {collection_data.get('owner')}")
+                    raise HTTPException(status_code=403, detail="You don't have permission to delete this knowledge base")
+
+                # 2. Perform HARD DELETE via new endpoint
+                logger.info(f"Issuing HARD DELETE to KB server: {collection_url}")
+                delete_resp = await client.delete(collection_url, headers=headers)
+                logger.info(f"Hard delete status: {delete_resp.status_code}")
+
+                if delete_resp.status_code in (200, 202, 204):
+                    # Some implementations may return body only on 200/202
+                    body = {}
+                    try:
+                        if delete_resp.content:
+                            body = delete_resp.json()
+                    except Exception:
+                        body = {}
+
+                    response_payload = {
+                        "kb_id": str(kb_id),
+                        "status": "success",
+                        "message": "Knowledge base deleted successfully",
                     }
-        
+                    # Map optional metrics if present from KB server response
+                    if isinstance(body, dict):
+                        if 'deleted_embeddings' in body:
+                            response_payload['deleted_embeddings'] = body.get('deleted_embeddings')
+                        if 'removed_files' in body:
+                            response_payload['removed_files'] = body.get('removed_files')
+                        if 'name' in body:
+                            response_payload['collection_name'] = body.get('name')
+                    return response_payload
+
+                if delete_resp.status_code == 404:
+                    # Treat as idempotent (already deleted after initial fetch)
+                    logger.warning(f"DELETE returned 404 after GET succeeded; treating as already deleted")
+                    return {
+                        "kb_id": str(kb_id),
+                        "status": "success",
+                        "message": "Knowledge base already deleted"
+                    }
+
+                try:
+                    _dd = delete_resp.json()
+                    detail = _dd.get('detail') if isinstance(_dd, dict) else str(_dd)
+                except Exception:
+                    detail = delete_resp.text or f"HTTP {delete_resp.status_code}"
+                raise HTTPException(status_code=delete_resp.status_code, detail=f"KB server deletion error: {detail}")
+
         except httpx.RequestError as req_err:
             logger.error(f"Error connecting to KB server: {str(req_err)}")
-            raise HTTPException(
-                status_code=503,
-                detail=f"Unable to connect to KB server: {str(req_err)}"
-            )
+            raise HTTPException(status_code=503, detail=f"Unable to connect to KB server: {str(req_err)}")
 
     async def query_knowledge_base(self, kb_id: str, query_data: Dict[str, Any], creator_user: Dict[str, Any]) -> Dict[str, Any]:
         """

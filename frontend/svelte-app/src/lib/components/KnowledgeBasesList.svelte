@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { getKnowledgeBases } from '$lib/services/knowledgeBaseService';
+    import { getKnowledgeBases, deleteKnowledgeBase } from '$lib/services/knowledgeBaseService';
     import { _ } from '$lib/i18n';
     import { user } from '$lib/stores/userStore';
     import { base } from '$app/paths';
@@ -101,6 +101,22 @@
      */
     function viewKnowledgeBase(id) {
         dispatch('view', { id });
+    }
+
+    async function handleDeleteKnowledgeBase(kb) {
+        if (!kb) return;
+        if (!confirm($_('knowledgeBases.list.confirmDelete', { default: `Delete knowledge base "${kb.name}" and all its data? This cannot be undone.` }))) {
+            return;
+        }
+        try {
+            await deleteKnowledgeBase(kb.id);
+            // Optimistic removal
+            knowledgeBases = knowledgeBases.filter(k => k.id !== kb.id);
+            successMessage = $_('knowledgeBases.list.deleteSuccess', { default: 'Knowledge base deleted.' });
+            setTimeout(() => { successMessage = ''; }, 4000);
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Deletion failed');
+        }
     }
     
     /**
@@ -251,7 +267,10 @@
                                 >
                                     {$_('knowledgeBases.list.editButton', { default: 'Edit' })}
                                 </button>
-                                <button class="text-red-600 hover:text-red-900">
+                                <button 
+                                    type="button"
+                                    class="text-red-600 hover:text-red-900" 
+                                    onclick={() => handleDeleteKnowledgeBase(kb)}>
                                     {$_('knowledgeBases.list.deleteButton', { default: 'Delete' })}
                                 </button>
                             </td>

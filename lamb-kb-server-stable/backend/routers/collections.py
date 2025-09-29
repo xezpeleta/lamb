@@ -41,6 +41,20 @@ router = APIRouter(
     dependencies=[Depends(verify_token)]
 )
 
+@router.delete(
+    "/{collection_id}",
+    summary="Delete collection",
+    description="Delete a collection (Chroma, files, DB metadata).",
+    tags=["Collections"],
+    responses={
+        200: {"description": "Collection deleted"},
+        404: {"description": "Collection not found"},
+        500: {"description": "Deletion failed"}
+    }
+)
+async def delete_collection(collection_id: int, db: Session = Depends(get_db)):
+    return CollectionsService.delete_collection(collection_id, db)
+
 # Helper function to get and validate collection existence in both databases
 def _get_and_validate_collection(db: Session, collection_id: int):
     """

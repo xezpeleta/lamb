@@ -528,3 +528,97 @@ class CollectionsService:
             "removed_files": removed_files,
             "status": "deleted"
         }
+
+    # -------------------- Collection Deletion (Chroma + DB + Files) -------------------- #
+    @staticmethod
+    def delete_collection(
+        collection_id: int,
+        db: Session
+    ) -> Dict[str, Any]:
+        """Delete an entire collection and its embeddings.
+
+        Steps:
+          1. Fetch collection (404 if missing)
+          2. Attempt to resolve Chroma collection (by chromadb_uuid then name)
+          3. Count embeddings (if possible) then delete Chroma collection
+          4. Enumerate file_registry entries and remove physical files (+ derived)
+          5. Delete DB collection row (cascades file_registry via FK where supported)
+          6. Return summary
+
+        Deletion is idempotent regarding Chroma and filesystem missing resources.
+        """
+        from pathlib import Path as _Path
+        from database.connection import get_chroma_client
+        from database.models import Collection as DBCollection, FileRegistry as DBFileRegistry
+
+        collection = db.query(DBCollection).filter(DBCollection.id == collection_id).first()
+        if not collection:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Collection with ID {collection_id} not found"
+            )
+
+        chroma_client = get_chroma_client()
+        chroma_deleted = False
+        embedding_count = 0
+        chroma_collection_name_used = None
+
+        # Try to load collection by chromadb_uuid first, then by name
+        potential_names = []
+        if collection.chromadb_uuid:
+            potential_names.append(collection.chromadb_uuid)
+        potential_names.append(collection.name)
+
+        for candidate in potential_names:
+            if chroma_deleted:
+                break
+            try:
+                chroma_col = chroma_client.get_collection(name=candidate)
+                # Count embeddings if API supports it
+                try:
+                    embedding_count = chroma_col.count()
+                except Exception:
+                    embedding_count = 0
+                chroma_client.delete_collection(name=candidate)
+                chroma_collection_name_used = candidate
+                chroma_deleted = True
+            except Exception:
+                # Ignore and try next
+                continue
+
+        # Gather and remove files
+        removed_files: List[str] = []
+        file_entries = db.query(DBFileRegistry).filter(DBFileRegistry.collection_id == collection_id).all()
+
+        def _maybe_remove(path: str):
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                    removed_files.append(path)
+                except Exception:
+                    pass
+
+        for fe in file_entries:
+            _maybe_remove(fe.file_path)
+            # Also try derived extensions
+            if fe.file_path.endswith('.pdf'):
+                _maybe_remove(fe.file_path[:-4] + '.html')
+            if fe.file_path.endswith('.html'):
+                _maybe_remove(fe.file_path[:-5] + '.pdf')
+
+        # Explicitly delete file registry entries (in case FK cascade not active)
+        for fe in file_entries:
+            db.delete(fe)
+
+        # Delete collection row
+        db.delete(collection)
+        db.commit()
+
+        return {
+            "id": collection_id,
+            "name": collection.name,
+            "deleted_embeddings": embedding_count,
+            "chroma_collection": chroma_collection_name_used,
+            "removed_files": removed_files,
+            "status": "deleted"
+        }

@@ -624,3 +624,26 @@ export async function deleteKnowledgeBaseFile(kbId, fileId, hard = true) {
         throw new Error(msg);
     }
 }
+
+/**
+ * Delete an entire knowledge base
+ * @param {string|number} kbId
+ */
+export async function deleteKnowledgeBase(kbId) {
+    if (!browser) throw new Error('Knowledge base operations are only available in the browser.');
+    const token = localStorage.getItem('userToken');
+    if (!token) throw new Error('User not authenticated.');
+    const url = getApiUrl(`/knowledgebases/kb/${kbId}`);
+    try {
+        const response = await axios.delete(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        return response.data;
+    } catch (error) {
+        let msg = 'Failed to delete knowledge base.';
+        if (axios.isAxiosError(error)) {
+            msg = error.response?.data?.detail || error.response?.data?.message || msg;
+        } else if (error instanceof Error) {
+            msg = error.message;
+        }
+        throw new Error(msg);
+    }
+}
