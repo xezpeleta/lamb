@@ -74,14 +74,6 @@ services:
       - PIP_DISABLE_PIP_VERSION_CHECK=1
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      # Override values expected by backend/.env for container networking and absolute paths
-      - OWI_BASE_URL=http://openwebui:8080
-      - OWI_PUBLIC_BASE_URL=http://localhost:8080
-      - OWI_PATH=${LAMB_PROJECT_PATH}/open-webui/backend/data
-      - LAMB_DB_PATH=${LAMB_PROJECT_PATH}
-      - LAMB_KB_SERVER=http://kb:9090
-      # LAMB_KB_SERVER Token should not be overridden
-      # - LAMB_KB_SERVER_TOKEN=0p3n-w3bu!
     env_file:
       - ${LAMB_PROJECT_PATH}/backend/.env
     volumes:
