@@ -77,6 +77,9 @@ const fs = require('fs');
     // Fill RAG Processor
     console.log("Setting RAG processor...");
     await page.selectOption("#rag-processor", { value: "simple_rag" });
+    // Click the checkbox
+    console.log("Checking the checkbox...");
+    await page.check('input[type="checkbox"][value="1"]');
     // Save the assistant
     console.log("Saving assistant...");
     await page.getByRole("button", { name: "Save" }).click();
