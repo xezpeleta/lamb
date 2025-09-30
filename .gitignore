@@ -160,3 +160,4 @@ lamb-kb-server-stable/backend/static/
 lamb-kb-server-stable/backend/.env
 Documentation/test-scripts/package-lock.json
 testing/package-lock.json
+testing/playwright/test-results/.last-run.json
