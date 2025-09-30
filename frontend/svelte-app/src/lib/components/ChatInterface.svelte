@@ -59,9 +59,9 @@
         }
         isLoadingModels = true;
         modelsError = null;
-        logWithTime(`Fetching models from ${apiUrl}/models`);
+        logWithTime(`Fetching models from ${apiUrl}/creator/models`);
         try {
-            const response = await fetch(`${apiUrl}/models`, {
+            const response = await fetch(`${apiUrl}/creator/models`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${userToken}` }
             });
@@ -143,7 +143,7 @@
                 throw new Error('User authentication token is required');
             }
             
-            const endpoint = `${apiUrl}/assistant/${assistantId}/chat/completions`;
+            const endpoint = `${apiUrl}/creator/assistant/${assistantId}/chat/completions`;
             logWithTime(`Sending request to ${endpoint}`);
             const response = await fetch(endpoint, {
                 method: 'POST',

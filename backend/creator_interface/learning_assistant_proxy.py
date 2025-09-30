@@ -287,3 +287,133 @@ async def get_assistant_info(
     except Exception as e:
         logger.error(f"Error getting assistant info: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get(
+    "/models",
+    summary="Get Available Models (Assistants)",
+    description="""
+    Get list of learning assistants available to the authenticated user.
+    
+    Returns assistants formatted as OpenAI-compatible models that the user has access to:
+    - Assistants owned by the user
+    - Assistants from the user's organization
+    
+    This endpoint respects organization boundaries and only returns assistants
+    the user has permission to use.
+    
+    Example Request:
+    ```bash
+    curl -X GET 'http://localhost:9099/creator/models' \\
+    -H 'Authorization: Bearer <user_token>'
+    ```
+    
+    Example Response:
+    ```json
+    {
+      "object": "list",
+      "data": [
+        {
+          "id": "lamb_assistant.1",
+          "object": "model",
+          "created": 1677609600,
+          "owned_by": "organization_name"
+        }
+      ]
+    }
+    ```
+    """,
+    dependencies=[Depends(security)]
+)
+async def get_available_models(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Get all assistants the authenticated user has access to, formatted as OpenAI models.
+    """
+    try:
+        import time
+        
+        # 1. Authenticate user
+        auth_header = f"Bearer {credentials.credentials}"
+        creator_user = get_creator_user_from_token(auth_header)
+        
+        if not creator_user:
+            logger.warning("Invalid authentication attempt for /models endpoint")
+            raise HTTPException(
+                status_code=401, 
+                detail="Invalid authentication. Please check your token."
+            )
+        
+        user_email = creator_user.get('email')
+        user_org = creator_user.get('organization', {})
+        user_org_id = user_org.get('id')
+        
+        logger.info(f"User {user_email} requesting available models (org: {user_org.get('name', 'None')})")
+        
+        # 2. Get all assistants from database
+        all_assistants = db_manager.get_list_of_assitants_id_and_name()
+        
+        # 3. Filter assistants based on access control
+        accessible_assistants = []
+        for assistant_dict in all_assistants:
+            assistant_id = assistant_dict.get('id')
+            
+            # Skip deleted assistants
+            if assistant_dict.get('owner') == 'deleted_assistant@owi.com':
+                continue
+            
+            # Check if user has access to this assistant
+            try:
+                assistant = db_manager.get_assistant_by_id(assistant_id)
+                if not assistant:
+                    continue
+                
+                # Check access: owner or same organization
+                is_owner = assistant.owner == user_email
+                assistant_org_id = getattr(assistant, 'organization_id', None)
+                same_org = user_org_id and (user_org_id == assistant_org_id)
+                
+                # Check if assistant is in system org and user has system access
+                system_org_access = False
+                if assistant_org_id == 1:
+                    system_org = db_manager.get_organization_by_slug("lamb")
+                    if system_org and user_org_id == system_org.get('id'):
+                        system_org_access = True
+                
+                if is_owner or same_org or system_org_access:
+                    accessible_assistants.append(assistant_dict)
+                    logger.debug(f"User {user_email} has access to assistant {assistant_id}")
+                else:
+                    logger.debug(f"User {user_email} does NOT have access to assistant {assistant_id}")
+                    
+            except Exception as e:
+                logger.error(f"Error checking access for assistant {assistant_id}: {str(e)}")
+                continue
+        
+        # 4. Format as OpenAI-compatible models
+        models_data = []
+        for assistant in accessible_assistants:
+            models_data.append({
+                "id": f"lamb_assistant.{assistant['id']}",
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": user_org.get('name', 'lamb_v4')
+            })
+        
+        response_body = {
+            "object": "list",
+            "data": models_data
+        }
+        
+        logger.info(f"Returning {len(models_data)} accessible models for user {user_email}")
+        return response_body
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting available models: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching available models"
+        )

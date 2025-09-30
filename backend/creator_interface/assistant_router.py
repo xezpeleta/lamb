@@ -166,6 +166,7 @@ def get_creator_user_from_token(auth_header: str) -> Optional[Dict[str, Any]]:
 
     Returns:
         Optional[Dict[str, Any]]: Creator user object if found and valid, None otherwise
+        Includes full organization data in 'organization' field for access control
     """
     try:
         if not auth_header:
@@ -186,6 +187,20 @@ def get_creator_user_from_token(auth_header: str) -> Optional[Dict[str, Any]]:
         if not creator_user:
             logger.error(f"No creator user found for email: {user_email}")
             return None
+
+        # Fetch full organization data for access control
+        organization_id = creator_user.get('organization_id')
+        if organization_id:
+            organization = db_manager.get_organization_by_id(organization_id)
+            if organization:
+                creator_user['organization'] = organization
+                logger.debug(f"Added organization data for user {user_email}: {organization.get('name', 'Unknown')}")
+            else:
+                logger.warning(f"Organization {organization_id} not found for user {user_email}")
+                creator_user['organization'] = {}
+        else:
+            logger.warning(f"No organization_id found for user {user_email}")
+            creator_user['organization'] = {}
 
         return creator_user
 
