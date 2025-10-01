@@ -36,8 +36,8 @@ load_dotenv()
 # Get environment variables
 SIGNUP_ENABLED = os.getenv('SIGNUP_ENABLED', 'false').lower() == 'true'
 SIGNUP_SECRET_KEY = os.getenv('SIGNUP_SECRET_KEY')
-PIPELINES_HOST = os.getenv('PIPELINES_HOST')
-PIPELINES_BEARER_TOKEN = os.getenv('PIPELINES_BEARER_TOKEN')
+# Note: LAMB_WEB_HOST, LAMB_BACKEND_HOST, and LAMB_BEARER_TOKEN are configured in config.py
+# Other modules import from config module instead of reading these directly
 
 # Initialize managers
 db_manager = LambDatabaseManager()

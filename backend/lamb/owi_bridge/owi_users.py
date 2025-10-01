@@ -7,11 +7,13 @@ from .owi_database import OwiDatabaseManager
 import requests
 import os
 import warnings
+import config
 
 # Suppress the specific passlib warning about bcrypt version
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
 
-PIPELINES_HOST = os.getenv("PIPELINES_HOST", "http://localhost:9099")
+# Use LAMB_WEB_HOST for profile image URLs (browsers need to access these)
+PIPELINES_HOST = config.LAMB_WEB_HOST
 
 
 # Configure logging

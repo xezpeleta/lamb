@@ -48,8 +48,8 @@ class AssistantListResponse(BaseModel):
 
 # --- End Pydantic Models --- #
 
-PIPELINES_HOST = os.getenv("PIPELINES_HOST", "http://localhost:9099")
-PIPELINES_BEARER_TOKEN = os.getenv("PIPELINES_BEARER_TOKEN", "0p3n-w3bu!")
+# Note: LAMB host and bearer token configuration moved to config.py
+# These variables are not used in this module
 
 db_manager = LambDatabaseManager()
 

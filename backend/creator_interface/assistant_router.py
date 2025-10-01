@@ -21,10 +21,12 @@ from fastapi.responses import JSONResponse
 import unicodedata
 from lamb.lamb_classes import Assistant
 from datetime import datetime
+import config
 
 # Configuration
-PIPELINES_HOST = os.getenv("PIPELINES_HOST", "http://localhost:9099")
-PIPELINES_BEARER_TOKEN = os.getenv("PIPELINES_BEARER_TOKEN", "your-bearer-token")
+# Use LAMB_BACKEND_HOST for internal server-to-server requests
+PIPELINES_HOST = config.LAMB_BACKEND_HOST or "http://localhost:9099"
+LAMB_BEARER_TOKEN = config.LAMB_BEARER_TOKEN or "your-bearer-token"
 
 # --- Pydantic Models for Assistant Router --- #
 
@@ -141,7 +143,7 @@ load_dotenv()
 
 # Get environment variables
 LAMB_HOST = os.getenv('LAMB_HOST', 'http://localhost:9099')
-PIPELINES_BEARER_TOKEN = os.getenv('PIPELINES_BEARER_TOKEN', '0p3n-w3bu!')
+# Note: LAMB_BEARER_TOKEN is configured in config.py and imported at the top
 router = APIRouter()
 
 # Initialize security context for dependency injection
@@ -1017,7 +1019,7 @@ async def update_assistant_proxy(assistant_id: int, request: Request):
 
 
         # Prepare headers for the forwarded request
-        api_token = PIPELINES_BEARER_TOKEN
+        api_token = LAMB_BEARER_TOKEN
         headers = {
             "Authorization": f"Bearer {api_token}",
             "Content-Type": "application/json"
@@ -1128,7 +1130,7 @@ async def delete_assistant_proxy(assistant_id: int, request: Request):
         logger.info(f"User {creator_user.get('email')} attempting to soft delete assistant {assistant_id}.")
 
         # Prepare headers for core API calls
-        api_token = PIPELINES_BEARER_TOKEN
+        api_token = LAMB_BEARER_TOKEN
         headers = {
             "Authorization": f"Bearer {api_token}",
             "Content-Type": "application/json"
@@ -1495,7 +1497,7 @@ async def export_assistant_proxy(assistant_id: int, request: Request):
             raise HTTPException(status_code=401, detail="Invalid authentication")
 
         # 2. Prepare Headers for Core API
-        api_token = PIPELINES_BEARER_TOKEN
+        api_token = LAMB_BEARER_TOKEN
         headers = {"Authorization": f"Bearer {api_token}"}
 
         # 3. Fetch Assistant Data from Core API
@@ -1752,7 +1754,7 @@ async def get_assistant_defaults_for_current_user(request: Request):
             response = await client.get(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{org_slug}/assistant-defaults",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -1791,7 +1793,7 @@ async def update_organization_assistant_defaults(slug: str, request: Request):
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/assistant-defaults",
                 json=body,
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )

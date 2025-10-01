@@ -6,11 +6,12 @@ import config
 
 class UserCreatorManager:
     def __init__(self):
-        self.pipelines_host = config.LAMB_HOST
+        # Use LAMB_BACKEND_HOST for internal server-to-server requests
+        self.pipelines_host = config.LAMB_BACKEND_HOST
         self.pipelines_bearer_token = config.API_KEY
         if not self.pipelines_host or not self.pipelines_bearer_token:
             raise ValueError(
-                "LAMB_HOST and API_KEY environment variables are required")
+                "LAMB_BACKEND_HOST and API_KEY environment variables are required")
 
     async def update_user_password(self, email: str, new_password: str) -> Dict[str, Any]:
         """

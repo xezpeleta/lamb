@@ -27,8 +27,9 @@ db_manager = LambDatabaseManager()
 logger = logging.getLogger(__name__)
 
 # Get configuration
-PIPELINES_HOST = config.LAMB_HOST or "http://localhost:9099"
-PIPELINES_BEARER_TOKEN = config.PIPELINES_BEARER_TOKEN or "0p3n-w3bu!"
+# Use LAMB_BACKEND_HOST for internal server-to-server requests
+PIPELINES_HOST = config.LAMB_BACKEND_HOST or "http://localhost:9099"
+LAMB_BEARER_TOKEN = config.LAMB_BEARER_TOKEN or "0p3n-w3bu!"
 
 # Organization Admin Authorization Helpers
 def get_user_organization_admin_info(auth_header: str) -> Optional[Dict[str, Any]]:
@@ -332,7 +333,7 @@ async def list_organizations(
                 url,
                 params=params,
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -419,7 +420,7 @@ async def create_organization(
                 f"{PIPELINES_HOST}/lamb/v1/organizations",
                 json=org_data.dict(),
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -621,7 +622,7 @@ async def get_organization(
             response = await client.get(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -701,7 +702,7 @@ async def update_organization(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}",
                 json=update_dict,
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -763,7 +764,7 @@ async def delete_organization(
             response = await client.delete(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -846,7 +847,7 @@ async def get_organization_config(
             response = await client.get(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/config",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -928,7 +929,7 @@ async def update_organization_config(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/config",
                 json=config_data,
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -1006,7 +1007,7 @@ async def get_organization_usage(
             response = await client.get(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/usage",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -1078,7 +1079,7 @@ async def export_organization(
             response = await client.get(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/export",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -1144,7 +1145,7 @@ async def sync_system_organization(
             response = await client.post(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/system/sync",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 }
             )
@@ -1850,7 +1851,7 @@ async def get_organization_assistant_defaults(
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/assistant-defaults",
-                headers={"Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}"}
+                headers={"Authorization": f"Bearer {LAMB_BEARER_TOKEN}"}
             )
             
             if response.status_code == 404:
@@ -1907,7 +1908,7 @@ async def update_organization_assistant_defaults(
             response = await client.put(
                 f"{PIPELINES_HOST}/lamb/v1/organizations/{slug}/assistant-defaults",
                 headers={
-                    "Authorization": f"Bearer {PIPELINES_BEARER_TOKEN}",
+                    "Authorization": f"Bearer {LAMB_BEARER_TOKEN}",
                     "Content-Type": "application/json"
                 },
                 json=body

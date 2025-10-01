@@ -6,16 +6,26 @@ load_dotenv()
 
 # Server Configuration
 DEV_MODE = os.getenv('DEV_MODE', 'false').lower() == 'false'
-LAMB_HOST = os.getenv('PIPELINES_HOST', 'http://localhost:9099')
-# Get the token from environment and strip any whitespace
-pipelines_token = os.getenv('PIPELINES_BEARER_TOKEN', '0p3n-w3bu!')
-if pipelines_token:
-    pipelines_token = pipelines_token.strip()
 
-PIPELINES_BEARER_TOKEN = pipelines_token
+# LAMB Host Configuration
+# LAMB_WEB_HOST: External/public URL for browser-side requests (e.g., https://lamb.yourdomain.com in production)
+# LAMB_BACKEND_HOST: Internal loopback URL for server-side requests (e.g., http://localhost:9099)
+# PIPELINES_HOST: Legacy variable, falls back to LAMB_WEB_HOST for backward compatibility
+LAMB_WEB_HOST = os.getenv('LAMB_WEB_HOST', os.getenv('PIPELINES_HOST', 'http://localhost:9099'))
+LAMB_BACKEND_HOST = os.getenv('LAMB_BACKEND_HOST', 'http://localhost:9099')
+LAMB_HOST = LAMB_WEB_HOST  # Legacy alias for backward compatibility
+
+# Get the token from environment and strip any whitespace
+# LAMB_BEARER_TOKEN is the new variable name, PIPELINES_BEARER_TOKEN is kept for backward compatibility
+lamb_token = os.getenv('LAMB_BEARER_TOKEN', os.getenv('PIPELINES_BEARER_TOKEN', '0p3n-w3bu!'))
+if lamb_token:
+    lamb_token = lamb_token.strip()
+
+LAMB_BEARER_TOKEN = lamb_token
+PIPELINES_BEARER_TOKEN = lamb_token  # Legacy alias for backward compatibility
 PIPELINES_DIR = os.getenv("PIPELINES_DIR", "./lamb_assistants")
  
-API_KEY = pipelines_token
+API_KEY = lamb_token
 # Ollama Configuration
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.1:latest')

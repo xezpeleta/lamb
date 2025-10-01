@@ -161,7 +161,7 @@ load_dotenv()
 
 # Get environment variables
 LAMB_HOST = os.getenv('LAMB_HOST', 'http://localhost:9099')
-PIPELINES_BEARER_TOKEN = os.getenv('PIPELINES_BEARER_TOKEN', '0p3n-w3bu!')
+# Note: LAMB_BEARER_TOKEN is configured in config.py
 LAMB_KB_SERVER = os.getenv('LAMB_KB_SERVER', None)
 LAMB_KB_SERVER_TOKEN = os.getenv('LAMB_KB_SERVER_TOKEN', '0p3n-w3bu!')
 

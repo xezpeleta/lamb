@@ -29,14 +29,14 @@ async def get_creator_users_page(request: Request):
 
 async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
-    Verify the bearer token against PIPELINES_BEARER_TOKEN
+    Verify the bearer token against LAMB_BEARER_TOKEN
     """
     token = credentials.credentials
     # Use centralized config token (has a default and trims whitespace)
     expected_token = API_KEY
 
     if not expected_token:
-        logger.error("PIPELINES_BEARER_TOKEN not configured")
+        logger.error("LAMB_BEARER_TOKEN not configured")
         raise HTTPException(
             status_code=500,
             detail="API authentication not properly configured"
