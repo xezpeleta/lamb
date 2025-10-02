@@ -368,12 +368,12 @@ async def process_lti_connection(request: Request):
             logging.info(
                 f"Successfully retrieved token for existing user: {email}")
 
-            # Get the OWI base URL from environment or use default
-            owi_base_url = os.getenv("OWI_BASE_URL", "http://localhost:8080")
-            owi_api_base_url = f"{owi_base_url}/api/v1"
+            # Get the OWI PUBLIC base URL for browser redirects (falls back to internal URL if not set)
+            owi_public_base_url = os.getenv("OWI_PUBLIC_BASE_URL", os.getenv("OWI_BASE_URL", "http://localhost:8080"))
+            owi_public_api_base_url = f"{owi_public_base_url}/api/v1"
 
             # Redirect to the completion URL with the token
-            redirect_url = f"{owi_api_base_url}/auths/complete?token={user_token}"
+            redirect_url = f"{owi_public_api_base_url}/auths/complete?token={user_token}"
             logging.info(f"Redirecting to: {redirect_url}")
             return RedirectResponse(url=redirect_url, status_code=303)
         else:
@@ -405,12 +405,12 @@ async def process_lti_connection(request: Request):
             logging.info(
                 f"Successfully created new user and retrieved token: {email}")
 
-            # Get the OWI base URL from environment or use default
-            owi_base_url = os.getenv("OWI_BASE_URL", "http://localhost:8080")
-            owi_api_base_url = f"{owi_base_url}/api/v1"
+            # Get the OWI PUBLIC base URL for browser redirects (falls back to internal URL if not set)
+            owi_public_base_url = os.getenv("OWI_PUBLIC_BASE_URL", os.getenv("OWI_BASE_URL", "http://localhost:8080"))
+            owi_public_api_base_url = f"{owi_public_base_url}/api/v1"
 
             # Redirect to the completion URL with the token
-            redirect_url = f"{owi_api_base_url}/auths/complete?token={token}"
+            redirect_url = f"{owi_public_api_base_url}/auths/complete?token={token}"
             logging.info(f"Redirecting to: {redirect_url}")
             return RedirectResponse(url=redirect_url, status_code=303)
 

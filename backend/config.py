@@ -37,7 +37,11 @@ OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4-mini')
 
 # Openwebui Authentication
 OWI_PATH = os.getenv('OWI_PATH')
+# OWI_BASE_URL: Internal URL for backend-to-OpenWebUI API calls
 OWI_BASE_URL = os.getenv('OWI_BASE_URL', 'http://localhost:8080')
+# OWI_PUBLIC_BASE_URL: Public URL for browser-facing redirects and login URLs
+# Falls back to OWI_BASE_URL if not explicitly set
+OWI_PUBLIC_BASE_URL = os.getenv('OWI_PUBLIC_BASE_URL', OWI_BASE_URL)
 CHROMA_PATH = os.path.join(OWI_PATH, "vector_db") 
 
 # Database Configuration

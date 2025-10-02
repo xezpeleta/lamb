@@ -8,17 +8,17 @@ This document describes all environment variables used by the LAMB backend.
 
 - **`LAMB_DB_PATH`** (required)
   - Path to the LAMB SQLite database file
-  - Example: `/path/to/your/lamb_database.db`
+  - Example: `/opt/lamb/lamb_v4.db`
 
 - **`OWI_PATH`** (required)
-  - Path to the Open WebUI backend data directory
-  - Example: `/path/to/your/open-webui/backend/data`
+  - Path to the Open WebUI **backend data** directory
+  - Example: `/opt/lamb/open-webui/backend/data`
 
 ## LAMB Host Configuration
 
 ### `LAMB_WEB_HOST`
 
-**Purpose**: External/public URL for browser-side requests
+**Purpose**: External/public URL for browser-side requests, and API requests comming from outside the docker network
 
 **Usage**: 
 - Used by the frontend for API calls
@@ -28,15 +28,15 @@ This document describes all environment variables used by the LAMB backend.
 - Development: `http://localhost:9099`
 - Production: `https://lamb.yourdomain.com`
 
-**Default**: Falls back to `PIPELINES_HOST` if not set, otherwise `http://localhost:9099`
+**Default**: Falls back to `PIPELINES_HOST` (top be deprecated) if not set, otherwise `http://localhost:9099`
 
 ### `LAMB_BACKEND_HOST`
 
-**Purpose**: Internal loopback URL for server-side requests
+**Purpose**: Internal loopback URL for server-side requests, usually originated from docker network
 
 **Usage**:
 - Used for internal API calls from Creator Interface to LAMB Core
-- Both APIs run in the same container, so this should always use localhost
+- Both APIs run in the same container or server, so this should always "localhost"
 
 **Examples**:
 - Development: `http://localhost:9099`
@@ -101,9 +101,40 @@ In production deployments:
 
 ### `OWI_BASE_URL`
 
-**Purpose**: Internal URL for Open WebUI API
+**Purpose**: Internal URL for backend-to-OpenWebUI API calls
+
+**Usage**:
+- Used by LAMB backend services for internal API calls (RAG queries, file uploads, model creation, auth)
+- Should point to the internal/service-to-service URL
+
+**Examples**:
+- Development: `http://localhost:8080`
+- Docker Compose: `http://openwebui:8080` (using service name)
+- Production: `http://localhost:8080` or internal network URL
 
 **Default**: `http://localhost:8080`
+
+### `OWI_PUBLIC_BASE_URL`
+
+**Purpose**: Public-facing URL for browser redirects and login URLs
+**Usage**:
+- Used for generating login URLs that browsers need to access
+- Used for LTI redirects
+- Used for any URL that will be sent to a user's browser
+
+**Examples**:
+- Development: `http://localhost:8080` (same as internal)
+- Production with reverse proxy: `https://openwebui.yourdomain.com`
+- Production without reverse proxy: `http://your-server-ip:8080`
+
+**Default**: Falls back to `OWI_BASE_URL` if not set
+
+**Why separate from OWI_BASE_URL?**
+
+In production deployments with Docker or reverse proxies:
+- `OWI_BASE_URL` can use internal service names (e.g., `http://openwebui:8080` in Docker)
+- `OWI_PUBLIC_BASE_URL` must use the public URL that browsers can reach (e.g., `https://openwebui.yourdomain.com`)
+- This separation allows services to communicate efficiently internally while providing correct URLs to users
 
 ### OWI Admin Configuration
 
@@ -131,7 +162,7 @@ These variables are used for initial admin account setup:
 
 **Default**: Empty string
 
-### `PIPELINES_DIR`
+### `PIPELINES_DIR` (deprecated)
 
 **Purpose**: Directory for storing pipeline/assistant files
 
@@ -156,7 +187,7 @@ These variables are used for initial admin account setup:
 
 - **`OPENAI_API_KEY`** - Required if using OpenAI
 - **`OPENAI_BASE_URL`** - Default: `https://api.openai.com/v1`
-- **`OPENAI_MODEL`** - Default: `gpt-4-mini`
+- **`OPENAI_MODEL`** - Default: `gpt-4o-mini`
 
 ## Example .env File
 
@@ -176,6 +207,7 @@ SIGNUP_SECRET_KEY=your-secret-key-here
 
 # OWI Integration
 OWI_BASE_URL=http://localhost:8080
+OWI_PUBLIC_BASE_URL=http://localhost:8080
 OWI_ADMIN_EMAIL=admin@lamb.com
 OWI_ADMIN_PASSWORD=your-admin-password
 
