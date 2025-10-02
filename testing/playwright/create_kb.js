@@ -2,6 +2,8 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
+const baseUrl = process.argv[2] || 'http://localhost:5173/';
+
 (async () => {
   const browser = await chromium.launch({ headless: false, slowMo: 1000 });
   const context = await browser.newContext({
@@ -18,7 +20,7 @@ const fs = require('fs');
       console.log('Loaded session data.');
       
       // Set localStorage data
-      await page.goto('http://localhost:5173/');
+      await page.goto(baseUrl);
       await page.evaluate((data) => {
         for (const [key, value] of Object.entries(data.localStorage)) {
           localStorage.setItem(key, value);
@@ -36,7 +38,7 @@ const fs = require('fs');
     console.error('Failed to load session data:', err);
   }
 
-  await page.goto('http://localhost:5173/knowledgebases');
+  await page.goto(baseUrl + '/knowledgebases');
 
   // "Create Knowledge Base" on the main page
   await page.getByRole('button', { name: /create knowledge base/i }).click();

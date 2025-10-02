@@ -1,13 +1,15 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
+const baseUrl = process.argv[2] || 'http://localhost:5173/';
+
 (async () => {
     const browser = await chromium.launch({ headless: false });
     const context = await browser.newContext();
     const page = await context.newPage();
 
     // Step 1: Go to localhost:5173 first
-    await page.goto('http://localhost:5173/');
+    await page.goto(baseUrl);
 
     // (Optional) Load session data if needed (kept from previous logic but moved after initial navigation)
     try {

@@ -6,6 +6,8 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
+const baseUrl = process.argv[2] || 'http://localhost:5173/';
+
 (async () => {
   const browser = await chromium.launch({ headless: false, slowMo: 500 });
   const context = await browser.newContext({ viewport: { width: 1400, height: 1000 } });
@@ -16,7 +18,7 @@ const fs = require('fs');
   if (fs.existsSync('session_data.json')) {
     try {
       const sessionData = JSON.parse(fs.readFileSync('session_data.json', 'utf-8'));
-      await page.goto('http://localhost:5173/');
+      await page.goto(baseUrl);
       await page.evaluate((data) => {
         for (const [k, v] of Object.entries(data.localStorage || {})) localStorage.setItem(k, v);
         for (const [k, v] of Object.entries(data.sessionStorage || {})) sessionStorage.setItem(k, v);
@@ -28,7 +30,7 @@ const fs = require('fs');
   }
 
   // Navigate to Knowledge Bases list
-  await page.goto('http://localhost:5173/knowledgebases');
+  await page.goto(baseUrl + '/knowledgebases');
   await page.waitForLoadState('networkidle');
 
   // Locate the row containing the KB name

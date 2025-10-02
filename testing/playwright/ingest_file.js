@@ -3,6 +3,8 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path');
 
+const baseUrl = process.argv[2] || 'http://localhost:5173/';
+
 const PDF_URL = 'https://www.euskadi.eus/web01-bopv/es/bopv2/datos/2025/09/2503764a.pdf';
 const PDF_DEST = '/tmp/ikasiker.pdf';
 
@@ -58,7 +60,7 @@ function downloadPDF(url, dest) {
             console.log('Loaded session data.');
             
             // Set localStorage and sessionStorage data
-            await page.goto('http://localhost:5173/');
+            await page.goto(baseUrl);
             await page.evaluate((data) => {
                 for (const [key, value] of Object.entries(data.localStorage)) {
                     localStorage.setItem(key, value);
@@ -77,7 +79,7 @@ function downloadPDF(url, dest) {
     }
 
     // Navigate to the knowledge base detail page
-    await page.goto('http://localhost:5173/knowledgebases?view=detail&id=1');
+    await page.goto(baseUrl + '/knowledgebases?view=detail&id=1');
 
     // Click on the "Ingest Content" button/tab
     await page.getByRole('button', { name: 'Ingest Content' }).click();

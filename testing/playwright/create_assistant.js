@@ -1,6 +1,8 @@
 const { chromium } = require("playwright");
 const fs = require('fs');
 
+const baseUrl = process.argv[2] || 'http://localhost:5173/';
+
 (async () => {
   // Launch browser with slowMo for throttling
   const browser = await chromium.launch({ headless: false, slowMo: 1000 });
@@ -14,7 +16,7 @@ const fs = require('fs');
       console.log('Loaded session data.');
       
       // Set localStorage data
-      await page.goto('http://localhost:5173/');
+      await page.goto(baseUrl);
       await page.evaluate((data) => {
         for (const [key, value] of Object.entries(data.localStorage)) {
           localStorage.setItem(key, value);
@@ -34,13 +36,13 @@ const fs = require('fs');
 
   try {
     // Navigate to the application
-    console.log("Navigating to http://localhost:5173/");
-    await page.goto("http://localhost:5173/");
+    console.log("Navigating to " + baseUrl);
+    await page.goto(baseUrl);
     await page.waitForLoadState("networkidle");
 
     // ...existing code...
     // navigate to http://localhost:5173/assistants?view=create
-    await page.goto("http://localhost:5173/assistants?view=create");
+    await page.goto(baseUrl + "/assistants?view=create");
     await page.waitForLoadState("networkidle");
 
     // ...existing code...

@@ -1,6 +1,8 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
+const baseUrl = process.argv[2] || 'http://localhost:5173/';
+
 (async () => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -15,14 +17,14 @@ const fs = require('fs');
   // Load session if available (token stored in localStorage)
   if (fs.existsSync('session_data.json')) {
     const sessionData = JSON.parse(fs.readFileSync('session_data.json', 'utf-8'));
-    await page.goto('http://localhost:5173/');
+    await page.goto(baseUrl);
     await page.evaluate((data) => {
       for (const [k,v] of Object.entries(data.localStorage)) localStorage.setItem(k, v);
       for (const [k,v] of Object.entries(data.sessionStorage)) sessionStorage.setItem(k, v);
     }, sessionData);
   }
 
-  await page.goto('http://localhost:5173/knowledgebases?view=detail&id=1');
+  await page.goto(baseUrl + '/knowledgebases?view=detail&id=1');
   // Switch to Query tab (tab itself is just named 'Query')
   await page.getByRole('button', { name: /^Query$/ }).click({ timeout: 5000 });
   await page.waitForSelector('#query-text');

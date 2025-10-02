@@ -20,7 +20,7 @@ const VIDEO_LANG = process.env.VIDEO_LANG || 'es';
 const KNOWN_KB_ID = process.env.KB_ID || '1';
 const HEADLESS = (process.env.HEADLESS || 'false').toLowerCase() === 'true';
 const SLOW_MO = process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : 500; // slower to observe steps
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
+const BASE_URL = process.argv[2] || 'http://localhost:5173';
 
 (async () => {
   const browser = await chromium.launch({ headless: HEADLESS, slowMo: SLOW_MO });
