@@ -18,7 +18,7 @@ This document describes all environment variables used by the LAMB backend.
 
 ### `LAMB_WEB_HOST`
 
-**Purpose**: External/public URL for browser-side requests, and API requests comming from outside the docker network
+**Purpose**: External/public URL for browser-side requests, and API requests coming from outside the docker network
 
 **Usage**: 
 - Used by the frontend for API calls
@@ -28,7 +28,7 @@ This document describes all environment variables used by the LAMB backend.
 - Development: `http://localhost:9099`
 - Production: `https://lamb.yourdomain.com`
 
-**Default**: Falls back to `PIPELINES_HOST` (top be deprecated) if not set, otherwise `http://localhost:9099`
+**Default**: Falls back to `PIPELINES_HOST` (to be deprecated) if not set, otherwise `http://localhost:9099`
 
 ### `LAMB_BACKEND_HOST`
 
@@ -36,7 +36,7 @@ This document describes all environment variables used by the LAMB backend.
 
 **Usage**:
 - Used for internal API calls from Creator Interface to LAMB Core
-- Both APIs run in the same container or server, so this should always "localhost"
+- Both APIs run in the same container or server, so this should always use "localhost"
 
 **Examples**:
 - Development: `http://localhost:9099`
