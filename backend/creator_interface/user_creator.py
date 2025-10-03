@@ -223,10 +223,16 @@ class UserCreatorManager:
                                     }
                                 )
                                 
+                                # If user creation succeeded or user already exists (409), try verification
                                 if create_response.status_code == 200:
                                     print(f"Successfully created creator user for admin {email}")
-                                    
-                                    # Now try to verify again
+                                elif create_response.status_code == 409:
+                                    print(f"Creator user for admin {email} already exists, proceeding with verification")
+                                else:
+                                    print(f"Failed to create creator user for admin: {create_response.text}")
+                                
+                                # Try to verify (works for both new and existing users)
+                                if create_response.status_code in [200, 409]:
                                     response = await client.post(
                                         f"{self.pipelines_host}/lamb/v1/creator_user/verify",
                                         headers={
@@ -238,8 +244,6 @@ class UserCreatorManager:
                                             "password": password
                                         }
                                     )
-                                else:
-                                    print(f"Failed to create creator user for admin: {create_response.text}")
 
                 # Process the verification response (either original or after admin handling)
                 if response.status_code == 200:
