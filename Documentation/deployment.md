@@ -27,6 +27,20 @@ To deploy in production:
 docker compose -f docker-compose.yaml -f docker-compose.prod.yaml up -d
 ```
 
+Wait **5-10 minutes** for all services to start and for Caddy to obtain TLS certificates.
+You can check the status of the containers with:
+
+```bash
+docker compose ps
+```
+To view logs for troubleshooting, use:
+
+```bash
+docker compose logs openwebui-build -f
+docker compose logs openwebui  -f
+docker compose logs backend -f
+```
+
 ### Environment Files and Configuration
 
 Before deploying, ensure you have:
