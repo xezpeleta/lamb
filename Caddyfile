@@ -14,10 +14,12 @@ lamb.yourdomain.com {
     }
 
     handle /lamb/* {
+        uri strip_prefix /lamb
         reverse_proxy backend:9099
     }
 
     handle /kb/* {
+        uri strip_prefix /kb
         reverse_proxy kb:9090
     }
 
