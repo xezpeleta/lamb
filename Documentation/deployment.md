@@ -34,6 +34,25 @@ Before deploying, ensure you have:
 - Edited `lamb-kb-server-stable/.env` as needed for your setup.
 - Copied and customized `frontend/svelte-app/static/config.js` from `config.js.sample`.
 
+This is an example of `config.js` for a production deployment:
+
+```javascript
+window.LAMB_CONFIG = {
+ api: {
+  baseUrl: 'https://lamb.yourdomain.com/creator',
+  lambServer: '',
+  openWebUiServer: 'https://lamb.yourdomain.com/openwebui',
+  },
+  assets: {
+    path: '/static'
+  },
+  features: {
+    enableOpenWebUi: true,
+    enableDebugMode: true
+  }
+};
+````
+
 ### Caddy Configuration
 
 Caddy is configured using the `Caddyfile` in the project root. Before deploying, make sure to edit the `Caddyfile` and replace all instances of `yourdomain.com` with your actual domain name. This ensures that Caddy will correctly handle HTTPS certificates and routing for your deployment.
