@@ -71,16 +71,16 @@ File: `/etc/apache2/sites-available/lamb-ssl.conf`
     RewriteEngine On
     RewriteRule ^/openwebui/(.*)$ https://openwebui.lamb-project.org/$1 [R=301,L]
 
-    # SPA fallback - serve index.html for all non-proxied routes
-    # This must come AFTER all ProxyPass directives
-#    RewriteCond %{REQUEST_FILENAME} !-f
-#    RewriteCond %{REQUEST_FILENAME} !-d
-#    RewriteCond %{REQUEST_URI} !^/creator/
-#    RewriteCond %{REQUEST_URI} !^/api/
-#    RewriteCond %{REQUEST_URI} !^/lamb/
-#    RewriteCond %{REQUEST_URI} !^/kb/
-#    RewriteRule ^ /index.html [L]
-#
+    # SPA fallback - serve index.html for all non-proxied, non-existent routes
+    # Use explicit document root check
+    RewriteCond /opt/lamb/frontend/build%{REQUEST_URI} !-f
+    RewriteCond /opt/lamb/frontend/build%{REQUEST_URI} !-d
+    RewriteCond %{REQUEST_URI} !^/creator/
+    RewriteCond %{REQUEST_URI} !^/api/
+    RewriteCond %{REQUEST_URI} !^/lamb/
+    RewriteCond %{REQUEST_URI} !^/kb/
+    RewriteRule ^ /index.html [L]
+    
     # Logging
     ErrorLog ${APACHE_LOG_DIR}/lamb_error.log
     CustomLog ${APACHE_LOG_DIR}/lamb_access.log combined
