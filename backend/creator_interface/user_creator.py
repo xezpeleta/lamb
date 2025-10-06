@@ -83,7 +83,7 @@ class UserCreatorManager:
             print(traceback.format_exc())
             return {"success": False, "error": str(e), "data": None}
 
-    async def create_user(self, email: str, name: str, password: str, role: str = "user", organization_id: int = None) -> Dict[str, Any]:
+    async def create_user(self, email: str, name: str, password: str, role: str = "user", organization_id: int = None, user_type: str = "creator") -> Dict[str, Any]:
         """
         Create a new creator user through the API
         
@@ -93,6 +93,7 @@ class UserCreatorManager:
             password: User's password
             role: User's role, either 'user' or 'admin' (default: 'user')
             organization_id: Organization ID to assign user to (optional, defaults to system org)
+            user_type: Type of user - 'creator' (default) or 'end_user'
             
         Returns:
             Dict[str, Any]: Response containing success status and error information if any
@@ -103,7 +104,8 @@ class UserCreatorManager:
                 payload = {
                     "email": email,
                     "name": name,
-                    "password": password
+                    "password": password,
+                    "user_type": user_type
                 }
                 
                 # Add organization_id if provided
@@ -270,7 +272,8 @@ class UserCreatorManager:
                             "email": data.get("email"),
                             "launch_url": launch_url,
                             "user_id": data.get("id"),
-                            "role": data.get("role", "user")  # Include role from response, default to 'user'
+                            "role": data.get("role", "user"),  # Include role from response, default to 'user'
+                            "user_type": data.get("user_type", "creator")  # Include user_type from response
                         },
                         "error": None
                     }

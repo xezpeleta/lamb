@@ -32,7 +32,8 @@
         name: '',
         password: '',
         role: 'user', // Default role
-        organization_id: null // Default to no organization selected
+        organization_id: null, // Default to no organization selected
+        user_type: 'creator' // Default type: 'creator' or 'end_user'
     });
     let isCreatingUser = $state(false);
     /** @type {string | null} */
@@ -155,7 +156,8 @@
             name: '',
             password: '',
             role: 'user',
-            organization_id: null
+            organization_id: null,
+            user_type: 'creator'
         };
         createUserError = null;
         createUserSuccess = false;
@@ -363,6 +365,7 @@
             formData.append('name', newUser.name);
             formData.append('password', newUser.password);
             formData.append('role', newUser.role);
+            formData.append('user_type', newUser.user_type);
             
             // Add organization_id if selected
             if (newUser.organization_id) {
@@ -1472,6 +1475,20 @@
                             >
                                 <option value="user">{localeLoaded ? $_('admin.users.create.roleUser', { default: 'User' }) : 'User'}</option>
                                 <option value="admin">{localeLoaded ? $_('admin.users.create.roleAdmin', { default: 'Admin' }) : 'Admin'}</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4 text-left">
+                            <label for="user_type" class="block text-gray-700 text-sm font-bold mb-2">
+                                User Type
+                            </label>
+                            <select 
+                                id="user_type" 
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                                bind:value={newUser.user_type}
+                            >
+                                <option value="creator">Creator (Can create assistants)</option>
+                                <option value="end_user">End User (Redirects to Open WebUI)</option>
                             </select>
                         </div>
 

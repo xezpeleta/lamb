@@ -371,11 +371,20 @@ CREATE TABLE organization_roles (
 ```sql
 CREATE TABLE Creator_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER,
     user_email TEXT NOT NULL UNIQUE,
     user_name TEXT NOT NULL,
-    user_config JSON
+    user_type TEXT NOT NULL DEFAULT 'creator' CHECK(user_type IN ('creator', 'end_user')),
+    user_config JSON,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 ```
+
+**User Types:**
+- `creator`: Users who can access the creator interface and manage assistants
+- `end_user`: Users who are automatically redirected to Open WebUI for direct interaction
 
 **User Config Structure:**
 ```json
@@ -386,6 +395,11 @@ CREATE TABLE Creator_users (
   }
 }
 ```
+
+**Note on User Types:**
+The `user_type` field distinguishes between:
+- **Creator Users:** Have access to the full creator interface at `/creator`, can create and manage assistants, Knowledge Bases, and configurations
+- **End Users:** Upon login, are automatically redirected to Open WebUI (`launch_url`), bypassing the creator interface entirely. These users are intended for direct interaction with published assistants without creation capabilities.
 
 #### 4.1.4 Assistants Table
 
@@ -713,13 +727,21 @@ data: [DONE]
      │                                │  Generate JWT token           │
      │                                ├──────────────────────────────►│
      │                                │                               │
-     │                                │  JWT token                    │
+     │                                │  JWT token + user_type        │
      │                                │◄──────────────────────────────┤
      │                                │                               │
      │  200 OK                        │                               │
-     │  {token, user_info}            │                               │
+     │  {token, user_info, user_type, │                               │
+     │   launch_url}                  │                               │
      │◄───────────────────────────────┤                               │
      │                                │                               │
+     │  Frontend checks user_type:    │                               │
+     │  - If 'creator': Continue to   │                               │
+     │    creator interface           │                               │
+     │  - If 'end_user': Redirect to  │                               │
+     │    launch_url (OWI)            │                               │
+     │                                │                               │
+     │  [For creator users only]      │                               │
      │  Store token in localStorage   │                               │
      │                                │                               │
      │  Subsequent requests           │                               │
@@ -734,11 +756,19 @@ data: [DONE]
      │                                │◄──────────────────────────────┤
      │                                │                               │
      │                                │  Check LAMB Creator user      │
-     │                                │  exists                       │
+     │                                │  exists & user_type           │
      │                                │                               │
      │  200 OK {data}                 │                               │
      │◄───────────────────────────────┤                               │
 ```
+
+**End User Login Flow:**
+When an end_user logs in:
+1. Login credentials are verified normally
+2. Response includes `user_type: 'end_user'` and `launch_url`
+3. Frontend detects `user_type === 'end_user'`
+4. Browser is redirected to `launch_url` (OWI with authentication token)
+5. User interacts only with Open WebUI, never seeing the creator interface
 
 ### 6.2 Token Validation
 

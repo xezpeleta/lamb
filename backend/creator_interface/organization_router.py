@@ -207,6 +207,46 @@ async def verify_admin_access(request: Request) -> str:
 # Organization CRUD endpoints
 
 @router.get(
+    "/organizations/list",
+    tags=["Organization Management"],
+    summary="List Organizations for User Assignment (Admin Only)",
+    description="""Retrieves a simplified list of organizations for user assignment dropdowns. Requires admin privileges.""",
+    dependencies=[Depends(security)],
+    responses={
+        200: {"description": "Successfully retrieved organizations list."},
+        401: {"model": ErrorResponse, "description": "Authentication required"},
+        403: {"model": ErrorResponse, "description": "Admin privileges required"}
+    }
+)
+async def list_organizations_for_users(request: Request):
+    """List organizations for user assignment (admin only)"""
+    try:
+        await verify_admin_access(request)
+        
+        organizations = db_manager.list_organizations()
+        
+        # Format for dropdown use
+        org_list = []
+        for org in organizations:
+            org_list.append({
+                "id": org["id"],
+                "name": org["name"],
+                "slug": org["slug"],
+                "is_system": org.get("is_system", False)
+            })
+        
+        return {
+            "success": True,
+            "data": org_list
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing organizations for users: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get(
     "/organizations/system/users",
     tags=["Organization Management"],
     summary="List System Organization Users (Admin Only)",
@@ -1176,6 +1216,7 @@ class OrgAdminUserCreate(BaseModel):
     name: str = Field(..., description="User display name")
     password: str = Field(..., description="User password")
     enabled: bool = Field(True, description="Whether user is enabled")
+    user_type: str = Field('creator', description="User type: 'creator' or 'end_user'")
 
 class OrgAdminUserUpdate(BaseModel):
     name: Optional[str] = Field(None, description="User display name")
@@ -1399,7 +1440,8 @@ async def create_organization_user(request: Request, user_data: OrgAdminUserCrea
             user_email=user_data.email,
             user_name=user_data.name,
             password=user_data.password,
-            organization_id=org_id
+            organization_id=org_id,
+            user_type=user_data.user_type
         )
         
         if not user_id:

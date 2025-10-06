@@ -57,6 +57,9 @@ class LambDatabaseManager:
                 self.create_database_and_tables()
                 logging.info(f"Created database at: {self.db_path}")
 #            logging.debug(f"Found database at: {self.db_path}")
+            
+            # Always run migrations on initialization (handles existing databases)
+            self.run_migrations()
 
         except Exception as e:
             logging.error(f"Error during initialization: {e}")
@@ -231,6 +234,7 @@ class LambDatabaseManager:
                         organization_id INTEGER,
                         user_email TEXT NOT NULL,
                         user_name TEXT NOT NULL,
+                        user_type TEXT NOT NULL DEFAULT 'creator' CHECK(user_type IN ('creator', 'end_user')),
                         user_config JSON,
                         created_at INTEGER NOT NULL,
                         updated_at INTEGER NOT NULL,
@@ -239,6 +243,7 @@ class LambDatabaseManager:
                     )
                 """)
                 cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{self.table_prefix}creator_users_org ON {self.table_prefix}Creator_users(organization_id)")
+                cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{self.table_prefix}creator_users_type ON {self.table_prefix}Creator_users(user_type)")
                 logging.info(
                     f"Table '{self.table_prefix}Creator_users' created successfully")
 
@@ -378,6 +383,41 @@ class LambDatabaseManager:
                     role="admin"
                 )
                 logging.info(f"Updated admin user role to 'admin' in system organization")
+    
+    def run_migrations(self):
+        """Run database migrations for schema updates"""
+        logging.info("Running database migrations")
+        connection = self.get_connection()
+        if not connection:
+            logging.error("Could not establish database connection for migrations")
+            return
+        
+        try:
+            with connection:
+                cursor = connection.cursor()
+                
+                # Migration 1: Add user_type column to Creator_users if it doesn't exist
+                cursor.execute(f"PRAGMA table_info({self.table_prefix}Creator_users)")
+                columns = [row[1] for row in cursor.fetchall()]
+                
+                if 'user_type' not in columns:
+                    logging.info("Adding user_type column to Creator_users table")
+                    cursor.execute(f"""
+                        ALTER TABLE {self.table_prefix}Creator_users 
+                        ADD COLUMN user_type TEXT NOT NULL DEFAULT 'creator' 
+                        CHECK(user_type IN ('creator', 'end_user'))
+                    """)
+                    # Create index for user_type
+                    cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{self.table_prefix}creator_users_type ON {self.table_prefix}Creator_users(user_type)")
+                    logging.info("Successfully added user_type column and index")
+                else:
+                    logging.debug("user_type column already exists in Creator_users table")
+                    
+        except sqlite3.Error as e:
+            logging.error(f"Migration error: {e}")
+        finally:
+            if connection:
+                connection.close()
     
     def create_system_organization(self) -> Optional[int]:
         """Create the 'lamb' system organization from .env configuration"""
@@ -1381,7 +1421,7 @@ class LambDatabaseManager:
             with connection:
                 cursor = connection.cursor()
                 cursor.execute(f"""
-                    SELECT id, organization_id, user_email, user_name, user_config 
+                    SELECT id, organization_id, user_email, user_name, user_type, user_config 
                     FROM {self.table_prefix}Creator_users 
                     WHERE user_email = ?
                 """, (user_email,))
@@ -1395,7 +1435,8 @@ class LambDatabaseManager:
                     'organization_id': result[1],
                     'email': result[2],
                     'name': result[3],
-                    'user_config': json.loads(result[4]) if result[4] else {}
+                    'user_type': result[4],
+                    'user_config': json.loads(result[5]) if result[5] else {}
                 }
 
         except sqlite3.Error as e:
@@ -1409,7 +1450,7 @@ class LambDatabaseManager:
             connection.close()
  #           logging.debug("Database connection closed")
 
-    def create_creator_user(self, user_email: str, user_name: str, password: str, organization_id: int = None):
+    def create_creator_user(self, user_email: str, user_name: str, password: str, organization_id: int = None, user_type: str = 'creator'):
         """
         Create a new creator user after verifying/creating OWI user
 
@@ -1418,6 +1459,7 @@ class LambDatabaseManager:
             user_name (str): User's name
             password (str): User's password
             organization_id (int): Organization ID (if None, uses system org)
+            user_type (str): Type of user - 'creator' (default) or 'end_user'
 
         Returns:
             Optional[int]: ID of created user or None if creation fails
@@ -1477,9 +1519,9 @@ class LambDatabaseManager:
                 cursor = connection.cursor()
                 cursor.execute(f"""
                     INSERT INTO {self.table_prefix}Creator_users 
-                    (organization_id, user_email, user_name, user_config, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (organization_id, user_email, user_name, "{}", now, now))
+                    (organization_id, user_email, user_name, user_type, user_config, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (organization_id, user_email, user_name, user_type, "{}", now, now))
 
                 new_user_id = cursor.lastrowid
                 logging.info(

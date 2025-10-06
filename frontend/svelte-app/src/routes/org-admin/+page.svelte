@@ -37,7 +37,8 @@
         email: '',
         name: '',
         password: '',
-        enabled: true
+        enabled: true,
+        user_type: 'creator' // 'creator' or 'end_user'
     });
     let isCreatingUser = $state(false);
     /** @type {string | null} */
@@ -374,7 +375,8 @@
             email: '',
             name: '',
             password: '',
-            enabled: true
+            enabled: true,
+            user_type: 'creator'
         };
         createUserError = null;
         createUserSuccess = false;
@@ -557,7 +559,8 @@
                 email: newUser.email,
                 name: newUser.name,
                 password: newUser.password,
-                enabled: newUser.enabled
+                enabled: newUser.enabled,
+                user_type: newUser.user_type
             }, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -1643,6 +1646,20 @@
                                 bind:value={newUser.password} 
                                 required 
                             />
+                        </div>
+
+                        <div class="mb-4 text-left">
+                            <label for="user_type" class="block text-gray-700 text-sm font-bold mb-2">
+                                User Type
+                            </label>
+                            <select 
+                                id="user_type" 
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                                bind:value={newUser.user_type}
+                            >
+                                <option value="creator">Creator (Can create assistants)</option>
+                                <option value="end_user">End User (Redirects to Open WebUI)</option>
+                            </select>
                         </div>
 
                         <div class="mb-6 text-left">
