@@ -10,7 +10,7 @@ The base LAMB setup will start the following containers:
 - LAMB Backend (port 9099)
 - Frontend Svelte dev server (port 5173)
 
-- Data persists via bind mounts under `/opt/lamb-project/lamb` (Open WebUI DB: `open-webui/backend/data/webui.db`, Chroma: `open-webui/backend/data/vector_db/chroma.sqlite3`, backend uses files under `/opt/lamb-project/lamb`).
+- Data persists via bind mounts under `/opt/lamb-project/lamb` (Open WebUI DB: `open-webui/backend/data/webui.db`, Chroma: `open-webui/backend/data/vector_db/chroma.sqlite3`).
 
 ## How to Deploy
 
@@ -45,7 +45,7 @@ docker compose logs backend -f
 
 Before deploying, ensure you have:
 - Edited `backend/.env` to include a valid `OPENAI_API_KEY` (see `backend/.env.example` for a template).
-- Edited `lamb-kb-server-stable/.env` as needed for your setup.
+- Edited `lamb-kb-server-stable/backend/.env` as needed for your setup (see `lamb-kb-server-stable/backend/.env.example` for a template).
 - Copied and customized `frontend/svelte-app/static/config.js` from `config.js.sample`.
 
 This is an example of `config.js` for a production deployment:
