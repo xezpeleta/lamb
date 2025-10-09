@@ -2,6 +2,7 @@ import httpx
 import os
 from typing import Optional, Dict, Any
 import config
+from lamb.database_manager import LambDatabaseManager
 
 
 class UserCreatorManager:
@@ -83,7 +84,7 @@ class UserCreatorManager:
             print(traceback.format_exc())
             return {"success": False, "error": str(e), "data": None}
 
-    async def create_user(self, email: str, name: str, password: str, role: str = "user", organization_id: int = None) -> Dict[str, Any]:
+    async def create_user(self, email: str, name: str, password: str, role: str = "user", organization_id: int = None, user_type: str = "creator") -> Dict[str, Any]:
         """
         Create a new creator user through the API
         
@@ -93,6 +94,7 @@ class UserCreatorManager:
             password: User's password
             role: User's role, either 'user' or 'admin' (default: 'user')
             organization_id: Organization ID to assign user to (optional, defaults to system org)
+            user_type: Type of user - 'creator' (default) or 'end_user'
             
         Returns:
             Dict[str, Any]: Response containing success status and error information if any
@@ -103,7 +105,8 @@ class UserCreatorManager:
                 payload = {
                     "email": email,
                     "name": name,
-                    "password": password
+                    "password": password,
+                    "user_type": user_type
                 }
                 
                 # Add organization_id if provided
@@ -262,6 +265,19 @@ class UserCreatorManager:
                         # The URL is returned directly as text
                         launch_url = owi_response.text.strip('"')
                     print(f"Launch URL: {launch_url}")
+                    
+                    # Fetch organization role if user belongs to an organization
+                    organization_role = None
+                    db_manager = LambDatabaseManager()
+                    creator_user = db_manager.get_creator_user_by_email(email)
+                    
+                    if creator_user and creator_user.get('organization_id'):
+                        organization_role = db_manager.get_user_organization_role(
+                            user_id=creator_user['id'],
+                            organization_id=creator_user['organization_id']
+                        )
+                        print(f"User {email} has organization role: {organization_role}")
+                    
                     data_to_return = {
                         "success": True,
                         "data": {
@@ -270,7 +286,9 @@ class UserCreatorManager:
                             "email": data.get("email"),
                             "launch_url": launch_url,
                             "user_id": data.get("id"),
-                            "role": data.get("role", "user")  # Include role from response, default to 'user'
+                            "role": data.get("role", "user"),  # Include role from response, default to 'user'
+                            "user_type": data.get("user_type", "creator"),  # Include user_type from response
+                            "organization_role": organization_role  # Include organization role
                         },
                         "error": None
                     }

@@ -32,28 +32,49 @@ db_manager = LambDatabaseManager()
 
 @router.get("/list")
 async def list_processors_and_connectors(
-   # removed bearer security for now so the frontend can get it without api key 
-   # credentials: HTTPAuthorizationCredentials = Depends(bearer_security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
 ):
     """
     List available Prompt Processors, Connectors, and RAG processors with their supported features
+    Organization-aware: returns models enabled for the user's organization if authenticated
     """
     pps = load_plugins('pps')
     connectors = load_plugins('connectors')
     rag_processors = load_plugins('rag')
     
-    # Get available LLMs for each connector
+    # Determine assistant_owner (user email) from credentials for organization-aware model lists
+    assistant_owner = None
+    if credentials:
+        try:
+            from lamb.owi_bridge.owi_users import OwiUserManager
+            user_manager = OwiUserManager()
+            owi_user = user_manager.get_user_auth(credentials.credentials)
+            if owi_user:
+                assistant_owner = owi_user.get('email')
+                logger.info(f"Fetching capabilities for user: {assistant_owner}")
+        except Exception as e:
+            logger.warning(f"Could not resolve user from token for capabilities: {e}")
+    
+    # Get available LLMs for each connector (organization-aware if assistant_owner is set)
     connector_info = {}
     for connector_name, connector_module in connectors.items():
         module = importlib.import_module(f"lamb.completions.connectors.{connector_name}")
         available_llms = []
         if hasattr(module, 'get_available_llms'):
             get_llms_func = getattr(module, 'get_available_llms')
-            # Check if the function is async and await if necessary
-            if asyncio.iscoroutinefunction(get_llms_func):
-                 available_llms = await get_llms_func()
-            else:
-                 available_llms = get_llms_func()
+            
+            # Call with assistant_owner if function signature supports it
+            try:
+                if asyncio.iscoroutinefunction(get_llms_func):
+                    available_llms = await get_llms_func(assistant_owner=assistant_owner)
+                else:
+                    available_llms = get_llms_func(assistant_owner=assistant_owner)
+            except TypeError:
+                # Function doesn't accept assistant_owner parameter (e.g., bypass connector)
+                if asyncio.iscoroutinefunction(get_llms_func):
+                    available_llms = await get_llms_func()
+                else:
+                    available_llms = get_llms_func()
         
         connector_info[connector_name] = {
             "name": connector_name,

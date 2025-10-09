@@ -57,6 +57,9 @@ class LambDatabaseManager:
                 self.create_database_and_tables()
                 logging.info(f"Created database at: {self.db_path}")
 #            logging.debug(f"Found database at: {self.db_path}")
+            
+            # Always run migrations on initialization (handles existing databases)
+            self.run_migrations()
 
         except Exception as e:
             logging.error(f"Error during initialization: {e}")
@@ -231,6 +234,7 @@ class LambDatabaseManager:
                         organization_id INTEGER,
                         user_email TEXT NOT NULL,
                         user_name TEXT NOT NULL,
+                        user_type TEXT NOT NULL DEFAULT 'creator' CHECK(user_type IN ('creator', 'end_user')),
                         user_config JSON,
                         created_at INTEGER NOT NULL,
                         updated_at INTEGER NOT NULL,
@@ -239,6 +243,7 @@ class LambDatabaseManager:
                     )
                 """)
                 cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{self.table_prefix}creator_users_org ON {self.table_prefix}Creator_users(organization_id)")
+                cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{self.table_prefix}creator_users_type ON {self.table_prefix}Creator_users(user_type)")
                 logging.info(
                     f"Table '{self.table_prefix}Creator_users' created successfully")
 
@@ -370,7 +375,7 @@ class LambDatabaseManager:
                 logging.info(f"Updated admin user organization to system org")
             
             # Check and assign admin role if needed
-            current_role = self.get_user_organization_role(system_org_id, admin_user_id)
+            current_role = self.get_user_organization_role(admin_user_id, system_org_id)
             if current_role != "admin":
                 self.assign_organization_role(
                     organization_id=system_org_id,
@@ -378,6 +383,41 @@ class LambDatabaseManager:
                     role="admin"
                 )
                 logging.info(f"Updated admin user role to 'admin' in system organization")
+    
+    def run_migrations(self):
+        """Run database migrations for schema updates"""
+        logging.info("Running database migrations")
+        connection = self.get_connection()
+        if not connection:
+            logging.error("Could not establish database connection for migrations")
+            return
+        
+        try:
+            with connection:
+                cursor = connection.cursor()
+                
+                # Migration 1: Add user_type column to Creator_users if it doesn't exist
+                cursor.execute(f"PRAGMA table_info({self.table_prefix}Creator_users)")
+                columns = [row[1] for row in cursor.fetchall()]
+                
+                if 'user_type' not in columns:
+                    logging.info("Adding user_type column to Creator_users table")
+                    cursor.execute(f"""
+                        ALTER TABLE {self.table_prefix}Creator_users 
+                        ADD COLUMN user_type TEXT NOT NULL DEFAULT 'creator' 
+                        CHECK(user_type IN ('creator', 'end_user'))
+                    """)
+                    # Create index for user_type
+                    cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_{self.table_prefix}creator_users_type ON {self.table_prefix}Creator_users(user_type)")
+                    logging.info("Successfully added user_type column and index")
+                else:
+                    logging.debug("user_type column already exists in Creator_users table")
+                    
+        except sqlite3.Error as e:
+            logging.error(f"Migration error: {e}")
+        finally:
+            if connection:
+                connection.close()
     
     def create_system_organization(self) -> Optional[int]:
         """Create the 'lamb' system organization from .env configuration"""
@@ -636,7 +676,7 @@ class LambDatabaseManager:
                 return None
             
             # Check if user is currently an admin in the system organization
-            current_role = self.get_user_organization_role(system_org['id'], admin_user_id)
+            current_role = self.get_user_organization_role(admin_user_id, system_org['id'])
             if current_role == "admin":
                 logging.error(f"User {admin_user_id} is a system admin and cannot be assigned to a new organization")
                 return None
@@ -940,29 +980,6 @@ class LambDatabaseManager:
         finally:
             connection.close()
     
-    def get_user_organization_role(self, organization_id: int, user_id: int) -> Optional[str]:
-        """Get user's role in an organization"""
-        connection = self.get_connection()
-        if not connection:
-            return None
-        
-        try:
-            with connection:
-                cursor = connection.cursor()
-                cursor.execute(f"""
-                    SELECT role FROM {self.table_prefix}organization_roles
-                    WHERE organization_id = ? AND user_id = ?
-                """, (organization_id, user_id))
-                
-                result = cursor.fetchone()
-                return result[0] if result else None
-                
-        except sqlite3.Error as e:
-            logging.error(f"Error getting user organization role: {e}")
-            return None
-        finally:
-            connection.close()
-    
     def get_organization_users(self, organization_id: int) -> List[Dict[str, Any]]:
         """Get all users in an organization with their roles"""
         connection = self.get_connection()
@@ -977,7 +994,8 @@ class LambDatabaseManager:
                 cursor.execute(f"""
                     SELECT u.id, u.user_email, u.user_name, 
                            COALESCE(r.role, 'member') as role, 
-                           COALESCE(r.created_at, u.created_at) as joined_at
+                           COALESCE(r.created_at, u.created_at) as joined_at,
+                           u.user_type
                     FROM {self.table_prefix}Creator_users u
                     LEFT JOIN {self.table_prefix}organization_roles r ON u.id = r.user_id AND r.organization_id = ?
                     WHERE u.organization_id = ?
@@ -991,7 +1009,8 @@ class LambDatabaseManager:
                         'email': row[1],
                         'name': row[2],
                         'role': row[3],
-                        'joined_at': row[4]
+                        'joined_at': row[4],
+                        'user_type': row[5]
                     })
                 
                 return users
@@ -1039,6 +1058,39 @@ class LambDatabaseManager:
         except sqlite3.Error as e:
             logging.error(f"Error getting user organizations: {e}")
             return []
+        finally:
+            connection.close()
+    
+    def get_user_organization_role(self, user_id: int, organization_id: int) -> Optional[str]:
+        """
+        Get the user's role in a specific organization
+        
+        Args:
+            user_id: LAMB creator user ID
+            organization_id: Organization ID
+        
+        Returns:
+            Role string ('owner', 'admin', 'member') or None if not found
+        """
+        connection = self.get_connection()
+        if not connection:
+            return None
+        
+        try:
+            with connection:
+                cursor = connection.cursor()
+                cursor.execute(f"""
+                    SELECT role
+                    FROM {self.table_prefix}organization_roles
+                    WHERE user_id = ? AND organization_id = ?
+                """, (user_id, organization_id))
+                
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except sqlite3.Error as e:
+            logging.error(f"Error getting user organization role: {e}")
+            return None
         finally:
             connection.close()
     
@@ -1291,7 +1343,7 @@ class LambDatabaseManager:
                 return False
             
             # Check user's role in system organization
-            user_role = self.get_user_organization_role(system_org['id'], creator_user['id'])
+            user_role = self.get_user_organization_role(creator_user['id'], system_org['id'])
             return user_role == 'admin'
             
         except Exception as e:
@@ -1307,7 +1359,7 @@ class LambDatabaseManager:
             if not creator_user:
                 return False
             
-            user_role = self.get_user_organization_role(organization_id, creator_user['id'])
+            user_role = self.get_user_organization_role(creator_user['id'], organization_id)
             return user_role in ['admin', 'owner']
             
         except Exception as e:
@@ -1381,7 +1433,7 @@ class LambDatabaseManager:
             with connection:
                 cursor = connection.cursor()
                 cursor.execute(f"""
-                    SELECT id, organization_id, user_email, user_name, user_config 
+                    SELECT id, organization_id, user_email, user_name, user_type, user_config 
                     FROM {self.table_prefix}Creator_users 
                     WHERE user_email = ?
                 """, (user_email,))
@@ -1395,7 +1447,8 @@ class LambDatabaseManager:
                     'organization_id': result[1],
                     'email': result[2],
                     'name': result[3],
-                    'user_config': json.loads(result[4]) if result[4] else {}
+                    'user_type': result[4],
+                    'user_config': json.loads(result[5]) if result[5] else {}
                 }
 
         except sqlite3.Error as e:
@@ -1409,7 +1462,7 @@ class LambDatabaseManager:
             connection.close()
  #           logging.debug("Database connection closed")
 
-    def create_creator_user(self, user_email: str, user_name: str, password: str, organization_id: int = None):
+    def create_creator_user(self, user_email: str, user_name: str, password: str, organization_id: int = None, user_type: str = 'creator'):
         """
         Create a new creator user after verifying/creating OWI user
 
@@ -1418,6 +1471,7 @@ class LambDatabaseManager:
             user_name (str): User's name
             password (str): User's password
             organization_id (int): Organization ID (if None, uses system org)
+            user_type (str): Type of user - 'creator' (default) or 'end_user'
 
         Returns:
             Optional[int]: ID of created user or None if creation fails
@@ -1477,9 +1531,9 @@ class LambDatabaseManager:
                 cursor = connection.cursor()
                 cursor.execute(f"""
                     INSERT INTO {self.table_prefix}Creator_users 
-                    (organization_id, user_email, user_name, user_config, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (organization_id, user_email, user_name, "{}", now, now))
+                    (organization_id, user_email, user_name, user_type, user_config, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (organization_id, user_email, user_name, user_type, "{}", now, now))
 
                 new_user_id = cursor.lastrowid
                 logging.info(
@@ -2104,6 +2158,65 @@ class LambDatabaseManager:
         except sqlite3.Error as e:
             logging.error(f"Error getting paginated assistants for owner {owner}: {e}")
             return [], 0 # Return empty list and 0 count on error
+        finally:
+            connection.close()
+
+    def get_assistants_by_organization(self, organization_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all assistants in an organization with publication status
+        
+        Args:
+            organization_id: ID of the organization
+            
+        Returns:
+            List of assistant dictionaries with publication info
+        """
+        connection = self.get_connection()
+        if not connection:
+            return []
+        
+        try:
+            assistants_table = self._get_table_name('assistants')
+            published_table = self._get_table_name('assistant_publish')
+            
+            with connection:
+                cursor = connection.cursor()
+                
+                # Get all assistants in organization with publication data
+                query = f"""
+                    SELECT
+                        a.id, a.name, a.description, a.owner, a.api_callback,
+                        a.system_prompt, a.prompt_template, a.RAG_endpoint, a.RAG_Top_k,
+                        a.RAG_collections, a.pre_retrieval_endpoint, a.post_retrieval_endpoint,
+                        a.created_at, a.updated_at,
+                        p.group_id, p.group_name, p.oauth_consumer_name, p.created_at as published_at,
+                        CASE 
+                            WHEN p.oauth_consumer_name IS NOT NULL AND p.oauth_consumer_name != 'null' THEN 1 
+                            ELSE 0 
+                        END as published
+                    FROM {assistants_table} a
+                    LEFT JOIN {published_table} p ON a.id = p.assistant_id
+                    WHERE a.organization_id = ?
+                    ORDER BY a.created_at DESC
+                """
+                cursor.execute(query, (organization_id,))
+                rows = cursor.fetchall()
+                
+                columns = [desc[0] for desc in cursor.description]
+                assistants_list = []
+                
+                for row in rows:
+                    assistant_dict = dict(zip(columns, row))
+                    assistant_dict['published'] = bool(assistant_dict.get('published'))
+                    assistant_dict['metadata'] = assistant_dict.get('api_callback', '')
+                    assistants_list.append(assistant_dict)
+                
+                logging.info(f"Retrieved {len(assistants_list)} assistants for organization {organization_id}")
+                return assistants_list
+                
+        except sqlite3.Error as e:
+            logging.error(f"Error getting assistants for organization {organization_id}: {e}")
+            return []
         finally:
             connection.close()
 

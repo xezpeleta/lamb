@@ -126,7 +126,7 @@ Returns:
     if assistant_owner:
         try:
             config_resolver = OrganizationConfigResolver(assistant_owner)
-            org_name = config_resolver.organization.name
+            org_name = config_resolver.organization.get('name', 'Unknown')
             openai_config = config_resolver.get_provider_config("openai")
             
             if openai_config:

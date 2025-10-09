@@ -31,9 +31,33 @@
     
     const result = await login(email, password);
     
+    console.log('Login result:', result);
+    console.log('User type:', result.data?.user_type);
+    
     // Check the success flag and nested data object
     if (result.success && result.data) { 
-      // Pass the nested result.data object to userStore.login
+      // Check if user is an end_user and redirect to OWI
+      if (result.data.user_type === 'end_user') {
+        console.log('End user detected! Redirecting to OWI...');
+        success = true;
+        message = 'Redirecting to Open WebUI...';
+        
+        // Redirect to OWI with the launch URL
+        if (result.data.launch_url) {
+          console.log('Redirecting to:', result.data.launch_url);
+          window.location.href = result.data.launch_url;
+        } else {
+          // Fallback: show error if launch_url is missing
+          console.error('No launch_url in response!');
+          success = false;
+          message = 'Unable to redirect to Open WebUI. Please contact your administrator.';
+        }
+        loading = false;
+        return;
+      }
+      console.log('Creator user detected, continuing to creator interface');
+      
+      // For creator users, continue with normal login
       user.login(result.data); 
       
       success = true;

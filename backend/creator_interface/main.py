@@ -117,6 +117,8 @@ class CreateUserAdminRequest(BaseModel):
     name: str
     password: str
     role: str = "user"
+    user_type: str = "creator"  # 'creator' or 'end_user'
+    organization_id: Optional[int] = None
 
 class CreateUserAdminResponse(BaseModel):
     success: bool = True
@@ -208,7 +210,9 @@ Example Success Response:
     "email": "user@example.com",
     "launch_url": "http://localhost:3000/?token=...",
     "user_id": "some-uuid",
-    "role": "user"
+    "role": "user",
+    "user_type": "creator",
+    "organization_role": "admin"
   }
 }
 ```
@@ -240,7 +244,9 @@ async def login(email: str = Form(...), password: str = Form(...)):
                 "email": result["data"]["email"],
                 "launch_url": result["data"]["launch_url"],
                 "user_id": result["data"]["user_id"],
-                "role": result["data"]["role"]
+                "role": result["data"]["role"],
+                "user_type": result["data"].get("user_type", "creator"),  # Include user_type
+                "organization_role": result["data"].get("organization_role")  # Include organization role
             }
         }
     else:
@@ -543,97 +549,6 @@ async def signup(
             "error": "An unexpected error occurred. Please try again."
         }
 
-@router.get(
-    "/admin/organizations/list",
-    tags=["Admin - Organization Management"],
-    summary="List Organizations for User Assignment (Admin Only)",
-    description="""Retrieves a simplified list of organizations for user assignment dropdowns. Requires admin privileges.
-
-Example Request (Admin):
-```bash
-curl -X GET 'http://localhost:8000/creator/admin/organizations/list' \\
--H 'Authorization: Bearer <admin_token>'
-```
-
-Example Success Response:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "LAMB System Organization",
-      "slug": "lamb",
-      "is_system": true
-    },
-    {
-      "id": 2,
-      "name": "Engineering Department",
-      "slug": "engineering",
-      "is_system": false
-    }
-  ]
-}
-```
-    """,
-    dependencies=[Depends(security)],
-    responses={
-        200: {"description": "Successfully retrieved organizations list."},
-    },
-)
-async def list_organizations_for_users(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    """List organizations for user assignment (admin only)"""
-    # Extract the authorization header
-    auth_header = f"Bearer {credentials.credentials}"
-    
-    # Check if the user has admin privileges
-    if not is_admin_user(auth_header):
-        return JSONResponse(
-            status_code=403,
-            content={
-                "success": False,
-                "error": "Access denied. Admin privileges required."
-            }
-        )
-    
-    try:
-        # Use the database_manager directly
-        from lamb.database_manager import LambDatabaseManager
-        db_manager = LambDatabaseManager()
-        
-        organizations = db_manager.list_organizations()
-        
-        # Format for dropdown use
-        org_list = []
-        for org in organizations:
-            org_list.append({
-                "id": org["id"],
-                "name": org["name"],
-                "slug": org["slug"],
-                "is_system": org["is_system"]
-            })
-        
-        return JSONResponse(
-            status_code=200,
-            content={
-                "success": True,
-                "data": org_list
-            }
-        )
-        
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "success": False,
-                "error": "Server error"
-            }
-        )
-
-
 # Add these constants after the other constants
 ALLOWED_EXTENSIONS = {'.txt', '.json', '.md'}
 STATIC_DIR = Path(__file__).parent.parent / 'static' / 'public'
@@ -677,7 +592,8 @@ async def create_user_admin(
     name: str = Form(...),
     password: str = Form(...),
     role: str = Form("user"),
-    organization_id: int = Form(None)
+    organization_id: int = Form(None),
+    user_type: str = Form("creator")  # 'creator' or 'end_user'
 ):
     """Create a new user (admin only)"""
     # Extract the authorization header
@@ -696,8 +612,8 @@ async def create_user_admin(
     # User is admin, proceed with creating a new user
     try:
         user_creator = UserCreatorManager()
-        # Pass the role and organization_id parameters to create_user method
-        result = await user_creator.create_user(email, name, password, role, organization_id)
+        # Pass the role, organization_id, and user_type parameters to create_user method
+        result = await user_creator.create_user(email, name, password, role, organization_id, user_type)
 
         if result["success"]:
             return JSONResponse(

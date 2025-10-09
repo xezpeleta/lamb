@@ -371,11 +371,20 @@ CREATE TABLE organization_roles (
 ```sql
 CREATE TABLE Creator_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER,
     user_email TEXT NOT NULL UNIQUE,
     user_name TEXT NOT NULL,
-    user_config JSON
+    user_type TEXT NOT NULL DEFAULT 'creator' CHECK(user_type IN ('creator', 'end_user')),
+    user_config JSON,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 ```
+
+**User Types:**
+- `creator`: Users who can access the creator interface and manage assistants
+- `end_user`: Users who are automatically redirected to Open WebUI for direct interaction
 
 **User Config Structure:**
 ```json
@@ -386,6 +395,11 @@ CREATE TABLE Creator_users (
   }
 }
 ```
+
+**Note on User Types:**
+The `user_type` field distinguishes between:
+- **Creator Users:** Have access to the full creator interface at `/creator`, can create and manage assistants, Knowledge Bases, and configurations
+- **End Users:** Upon login, are automatically redirected to Open WebUI (`launch_url`), bypassing the creator interface entirely. These users are intended for direct interaction with published assistants without creation capabilities.
 
 #### 4.1.4 Assistants Table
 
@@ -713,13 +727,21 @@ data: [DONE]
      │                                │  Generate JWT token           │
      │                                ├──────────────────────────────►│
      │                                │                               │
-     │                                │  JWT token                    │
+     │                                │  JWT token + user_type        │
      │                                │◄──────────────────────────────┤
      │                                │                               │
      │  200 OK                        │                               │
-     │  {token, user_info}            │                               │
+     │  {token, user_info, user_type, │                               │
+     │   launch_url}                  │                               │
      │◄───────────────────────────────┤                               │
      │                                │                               │
+     │  Frontend checks user_type:    │                               │
+     │  - If 'creator': Continue to   │                               │
+     │    creator interface           │                               │
+     │  - If 'end_user': Redirect to  │                               │
+     │    launch_url (OWI)            │                               │
+     │                                │                               │
+     │  [For creator users only]      │                               │
      │  Store token in localStorage   │                               │
      │                                │                               │
      │  Subsequent requests           │                               │
@@ -734,11 +756,19 @@ data: [DONE]
      │                                │◄──────────────────────────────┤
      │                                │                               │
      │                                │  Check LAMB Creator user      │
-     │                                │  exists                       │
+     │                                │  exists & user_type           │
      │                                │                               │
      │  200 OK {data}                 │                               │
      │◄───────────────────────────────┤                               │
 ```
+
+**End User Login Flow:**
+When an end_user logs in:
+1. Login credentials are verified normally
+2. Response includes `user_type: 'end_user'` and `launch_url`
+3. Frontend detects `user_type === 'end_user'`
+4. Browser is redirected to `launch_url` (OWI with authentication token)
+5. User interacts only with Open WebUI, never seeing the creator interface
 
 ### 6.2 Token Validation
 
@@ -2036,13 +2066,84 @@ docker-compose up -d
 
 ---
 
-## 15. API Reference
+## 15. End User Feature
+
+### 15.1 Overview
+
+The end_user feature provides a streamlined login experience for users who only need to interact with published assistants without accessing the creator interface.
+
+### 15.2 Implementation Details
+
+**Database Schema:**
+- `user_type` column in `Creator_users` table
+- CHECK constraint: `user_type IN ('creator', 'end_user')`
+- Default value: `'creator'` for backward compatibility
+- Automatic migration on database initialization
+
+**Login Flow Differences:**
+
+| Step | Creator User | End User |
+|------|--------------|----------|
+| 1. Login credentials | Verified | Verified |
+| 2. Backend response | Returns user_type='creator' | Returns user_type='end_user' |
+| 3. Frontend action | Store token, navigate to / | Redirect to launch_url |
+| 4. User sees | LAMB creator interface | Open WebUI only |
+
+**Backend Changes:**
+- `get_creator_user_by_email()` - SELECTs and returns user_type
+- `create_creator_user()` - Accepts user_type parameter
+- `/creator/login` - Returns user_type in response
+- `/creator/admin/users/create` - Accepts user_type parameter
+- `/creator/admin/org-admin/users` - Org admins can create end_users
+
+**Frontend Changes:**
+- `Login.svelte` - Detects user_type and redirects end_users
+- `admin/+page.svelte` - User Type dropdown for system admins
+- `org-admin/+page.svelte` - User Type dropdown for org admins
+- `Nav.svelte` - Hides Org Admin link from non-admins
+
+**Migration:**
+```python
+def run_migrations(self):
+    """Run database migrations for schema updates"""
+    # Add user_type column if it doesn't exist
+    cursor.execute(f"PRAGMA table_info({self.table_prefix}Creator_users)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    if 'user_type' not in columns:
+        cursor.execute(f"""
+            ALTER TABLE {self.table_prefix}Creator_users 
+            ADD COLUMN user_type TEXT NOT NULL DEFAULT 'creator' 
+            CHECK(user_type IN ('creator', 'end_user'))
+        """)
+```
+
+### 15.3 URL Configuration
+
+**Important:** End users are redirected using `OWI_PUBLIC_BASE_URL`:
+- `OWI_BASE_URL` - Internal Docker network URL (e.g., `http://openwebui:8080`)
+- `OWI_PUBLIC_BASE_URL` - Public browser-accessible URL (e.g., `http://localhost:8080`)
+
+The `launch_url` returned by login uses `OWI_PUBLIC_BASE_URL` to ensure browsers can access Open WebUI.
+
+### 15.4 Testing
+
+Comprehensive Playwright test suite in `/testing/playwright/end_user_tests/`:
+- `test_end_user_creation.js` - Test admin creating end_users
+- `test_end_user_login.js` - Test end_user login and redirect
+- `test_creator_vs_enduser.js` - Compare both user types
+- `test_end_user_full_suite.js` - Complete test suite
+- `run_end_user_tests.sh` - Automated test runner
+
+---
+
+## 16. API Reference
 
 See PRD document and sections 5.1-5.3 for complete API documentation.
 
 ---
 
-## 16. File Structure Summary
+## 17. File Structure Summary
 
 ```
 /backend/
@@ -2071,5 +2172,5 @@ This document provides comprehensive technical documentation for the LAMB platfo
 ---
 
 **Maintainers:** LAMB Development Team  
-**Last Updated:** Oct 2025  
-**Version:** 2.0
+**Last Updated:** October 2025  
+**Version:** 2.1 (Added end_user feature)

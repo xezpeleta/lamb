@@ -62,7 +62,7 @@ To democratize AI in education by providing educators with an intuitive platform
 - As an admin, I want to manage user roles and permissions
 - As an admin, I want to monitor system usage across organizations
 
-#### 2.1.3 Student (End User)
+#### 2.1.3 Student (End User via LTI)
 **Profile:** Learner accessing assistants through LMS
 - Interacts with published learning assistants
 - Receives context-aware tutoring and support
@@ -72,6 +72,19 @@ To democratize AI in education by providing educators with an intuitive platform
 - As a student, I want to ask questions about course materials and get accurate answers
 - As a student, I want to see sources cited when the assistant references materials
 - As a student, I want to access my learning assistant directly from my Moodle course
+
+#### 2.1.4 End User (Direct Access)
+**Profile:** User with direct login access to Open WebUI
+- Logs into LAMB and is automatically redirected to Open WebUI
+- Does not have access to creator interface or assistant creation
+- Can use published assistants and interact with the chat interface
+- Can be created by admins or organization admins
+- Belongs to a specific organization
+
+**Key User Stories:**
+- As an end user, I want to log into the system and be automatically directed to the chat interface
+- As an end user, I want to use published learning assistants without needing to know how to create them
+- As an end user, I want access limited to interaction capabilities, not creation capabilities
 
 ### 2.2 Secondary User Personas
 
@@ -104,6 +117,11 @@ To democratize AI in education by providing educators with an intuitive platform
 - **FR-USER-003:** Organization admins shall manage their organization
 - **FR-USER-004:** Regular users shall create and manage their own assistants
 - **FR-USER-005:** System shall allow role-based access control to assistants
+- **FR-USER-006:** System shall support two user types: creator and end_user
+- **FR-USER-007:** Creator users shall have access to the creator interface for managing assistants
+- **FR-USER-008:** End users shall be automatically redirected to Open WebUI upon login
+- **FR-USER-009:** End users shall not have access to the creator interface or assistant creation features
+- **FR-USER-010:** Admins and organization admins shall be able to create both creator and end users
 
 ### 3.2 Organization Management (Multi-Tenancy)
 
@@ -208,11 +226,13 @@ To democratize AI in education by providing educators with an intuitive platform
 ### 3.8 Administrative Functions
 
 #### 3.8.1 User Management (Admin)
-- **FR-ADMIN-001:** Admins shall create new users with specified roles
+- **FR-ADMIN-001:** Admins shall create new users with specified roles and user types
 - **FR-ADMIN-002:** Admins shall update user passwords
 - **FR-ADMIN-003:** Admins shall change user roles (admin/user)
 - **FR-ADMIN-004:** Admins shall enable/disable user accounts
 - **FR-ADMIN-005:** Admins shall list all creator users with organization info
+- **FR-ADMIN-006:** Admins shall create end_user type accounts that auto-redirect to Open WebUI
+- **FR-ADMIN-007:** Organization admins shall create end_users within their organization
 
 #### 3.8.2 Organization Management (Admin)
 - **FR-ADMIN-006:** System admins shall create new organizations
@@ -329,7 +349,9 @@ To democratize AI in education by providing educators with an intuitive platform
 #### 5.2.1 LAMB Database Schema (SQLite)
 - **organizations:** Multi-tenancy organizational units
 - **organization_roles:** User-organization membership and roles
-- **Creator_users:** Creator user accounts
+- **Creator_users:** User accounts with type field ('creator' or 'end_user')
+  - Creator users: Full creator interface access
+  - End users: Auto-redirect to Open WebUI, no creator access
 - **assistants:** Learning assistant definitions
 - **lti_users:** LTI user mappings
 - **model_permissions:** User-specific model access control
@@ -373,16 +395,32 @@ To democratize AI in education by providing educators with an intuitive platform
 - Document list within collections
 - Test query interface
 
-#### 6.1.5 Admin Panel
+#### 6.1.5 Admin Panel (System Admin)
 - User management table (list, create, edit, disable)
+- User Type selector in Create User form (Creator / End User)
 - Organization management (create, edit, configure)
 - System configuration
 
-### 6.2 Student/End-User Interface
+#### 6.1.6 Organization Admin Panel
+- Organization-specific user management
+- User Type selector for creating creator or end users
+- Organization settings (API keys, signup, limits)
+- User enable/disable within organization
+
+### 6.2 End-User Interfaces
+
+#### 6.2.1 LTI End Users (via LMS)
 - Accessed via Open WebUI chat interface
 - Integrated into LMS via LTI iframe
 - Standard chat interface with message history
 - Source citations when RAG is enabled
+
+#### 6.2.2 Direct End Users (via Login)
+- Login at LAMB interface with credentials
+- Automatic redirect to Open WebUI upon successful authentication
+- No access to creator interface or assistant management
+- Can interact with all published assistants in their organization
+- Session managed via JWT token in redirect URL
 
 ---
 
@@ -394,7 +432,7 @@ To democratize AI in education by providing educators with an intuitive platform
 - `POST /creator/login` - User login
 - `POST /creator/signup` - User registration (if enabled)
 
-#### 7.1.2 Assistant Management
+#### 7.1.2 Assistant Management (Creator Users Only)
 - `GET /creator/assistant/get_assistants` - List assistants (paginated)
 - `GET /creator/assistant/get_assistant/{id}` - Get assistant details
 - `POST /creator/assistant/create_assistant` - Create new assistant
@@ -414,13 +452,36 @@ To democratize AI in education by providing educators with an intuitive platform
 - `GET /v1/models` - List available assistants
 - `POST /v1/pipelines/reload` - Reload pipeline configuration
 
-#### 7.1.5 Admin
+#### 7.1.5 Admin (System Admin)
 - `GET /creator/users` - List all users (admin)
-- `POST /creator/admin/users/create` - Create user (admin)
+- `POST /creator/admin/users/create` - Create user (admin, supports user_type parameter)
 - `PUT /creator/admin/users/update-role-by-email` - Update user role (admin)
 - `PUT /creator/admin/users/{id}/status` - Enable/disable user (admin)
 - `GET /creator/admin/organizations` - List organizations (admin)
+- `GET /creator/admin/organizations/list` - List organizations for dropdowns (admin)
 - `POST /creator/admin/organizations/enhanced` - Create organization with admin (admin)
+
+**Create User Endpoint:**
+```
+POST /creator/admin/users/create
+Parameters: 
+  - email (required)
+  - name (required) 
+  - password (required)
+  - role (optional, default: 'user')
+  - organization_id (optional, default: system org)
+  - user_type (optional, 'creator' or 'end_user', default: 'creator')
+```
+
+#### 7.1.6 Organization Admin
+- `GET /creator/admin/org-admin/users` - List organization users
+- `POST /creator/admin/org-admin/users` - Create organization user (supports user_type)
+- `PUT /creator/admin/org-admin/users/{id}` - Update organization user
+- `POST /creator/admin/org-admin/users/{id}/password` - Change user password
+- `GET /creator/admin/org-admin/settings/signup` - Get signup settings
+- `PUT /creator/admin/org-admin/settings/signup` - Update signup settings
+- `GET /creator/admin/org-admin/settings/api` - Get API settings
+- `PUT /creator/admin/org-admin/settings/api` - Update API settings
 
 ---
 

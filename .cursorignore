@@ -1,0 +1,8 @@
+lamb-kb-server-stable/*
+
+open-webui/*
+
+frontend/build/* 
+
+frontend/svelte-app/node_modules/*
+

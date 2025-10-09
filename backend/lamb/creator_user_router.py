@@ -61,6 +61,7 @@ class CreatorUserCreate(BaseModel):
     name: str
     password: str
     organization_id: Optional[int] = None
+    user_type: str = "creator"  # 'creator' or 'end_user'
 
 
 class CreatorUserResponse(BaseModel):
@@ -100,7 +101,8 @@ async def create_creator_user(
             user_email=user_data.email,
             user_name=user_data.name,
             password=user_data.password,
-            organization_id=user_data.organization_id
+            organization_id=user_data.organization_id,
+            user_type=user_data.user_type
         )
 
         if not user_id:
@@ -167,7 +169,8 @@ async def verify_creator_user(
             "name": user["name"],
             "email": user["email"],
             "role": user_role,
-            "id": user["id"]
+            "id": user["id"],
+            "user_type": user.get("user_type", "creator")  # Include user_type
         }
 
     except HTTPException:
