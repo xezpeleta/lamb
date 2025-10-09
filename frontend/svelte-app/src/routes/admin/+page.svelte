@@ -1698,7 +1698,7 @@
                             </div>
                         </div>
 
-                        <div class="mb-4 text-left">
+                        <div class="mb-4 text-left" style="display: none;">
                             <label for="org_limits" class="block text-gray-700 text-sm font-bold mb-2">
                                 {localeLoaded ? $_('admin.organizations.create.limits', { default: 'Usage Limits' }) : 'Usage Limits'}
                             </label>

@@ -5,6 +5,7 @@
     import { base } from '$app/paths';
     import axios from 'axios';
     import { user } from '$lib/stores/userStore';
+    import AssistantAccessManager from '$lib/components/AssistantAccessManager.svelte';
 
     // Get user data  
     /** @type {any} */
@@ -18,6 +19,17 @@
     let isLoading = $state(false);
     /** @type {string | null} */
     let error = $state(null);
+
+    // Assistants management state
+    /** @type {any[]} */
+    let orgAssistants = $state([]);
+    let isLoadingAssistants = $state(false);
+    /** @type {string | null} */
+    let assistantsError = $state(null);
+    let selectedAssistant = $state(null);
+    let showAccessModal = $state(false);
+    let assistantsSearchQuery = $state('');
+    let assistantsFilterPublished = $state('all');
 
     // Dashboard data
     /** @type {any} */
@@ -234,6 +246,12 @@
         currentView = 'users';
         goto(`${base}/org-admin?view=users`, { replaceState: true });
         fetchUsers();
+    }
+
+    function showAssistants() {
+        currentView = 'assistants';
+        goto(`${base}/org-admin?view=assistants`, { replaceState: true });
+        fetchAssistants();
     }
 
     function showSettings() {
@@ -593,6 +611,52 @@
         }
     }
 
+    // Assistants management functions
+    async function fetchAssistants() {
+        if (isLoadingAssistants) {
+            console.log("Already loading assistants, skipping duplicate request");
+            return;
+        }
+
+        isLoadingAssistants = true;
+        assistantsError = null;
+        
+        try {
+            const headers = {
+                'Authorization': `Bearer ${$user.token}`,
+                'Content-Type': 'application/json'
+            };
+            
+            const response = await axios.get(`${API_BASE}/org-admin/assistants`, { headers });
+            orgAssistants = response.data.assistants || [];
+        } catch (err) {
+            console.error('Error fetching assistants:', err);
+            assistantsError = err.response?.data?.detail || 'Failed to fetch assistants';
+        } finally {
+            isLoadingAssistants = false;
+        }
+    }
+
+    function manageAssistantAccess(assistant) {
+        selectedAssistant = assistant;
+        showAccessModal = true;
+    }
+
+    function closeAccessModal() {
+        showAccessModal = false;
+        selectedAssistant = null;
+    }
+
+    function handleAccessUpdated() {
+        // Optionally reload assistants
+        fetchAssistants();
+    }
+
+    function formatDate(timestamp) {
+        if (!timestamp) return 'N/A';
+        return new Date(timestamp * 1000).toLocaleDateString();
+    }
+
     // Settings functions
     async function fetchSettings() {
         if (isLoadingSettings) {
@@ -758,7 +822,11 @@
                 throw new Error('Authentication token not found. Please log in again.');
             }
 
-            await axios.put(getApiUrl('/org-admin/settings/signup'), newSignupSettings, {
+            const signupUrl = targetOrgSlug 
+                ? getApiUrl(`/org-admin/settings/signup?org=${targetOrgSlug}`)
+                : getApiUrl('/org-admin/settings/signup');
+
+            await axios.put(signupUrl, newSignupSettings, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -767,15 +835,11 @@
 
             // Refresh settings
             await fetchSettings();
-            alert('Signup settings updated successfully!');
+            // Success - settings refreshed
 
         } catch (err) {
             console.error('Error updating signup settings:', err);
-            if (axios.isAxiosError(err) && err.response?.data?.detail) {
-                alert(`Error: ${err.response.data.detail}`);
-            } else {
-                alert('Error updating signup settings');
-            }
+            // Error is logged to console
         }
     }
 
@@ -786,7 +850,11 @@
                 throw new Error('Authentication token not found. Please log in again.');
             }
 
-            await axios.put(getApiUrl('/org-admin/settings/api'), newApiSettings, {
+            const apiUrl = targetOrgSlug 
+                ? getApiUrl(`/org-admin/settings/api?org=${targetOrgSlug}`)
+                : getApiUrl('/org-admin/settings/api');
+
+            await axios.put(apiUrl, newApiSettings, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -796,17 +864,24 @@
             // Clear pending changes after successful save
             clearPendingChanges();
             
+            // Clear capabilities cache so assistant form gets updated models
+            if (typeof window !== 'undefined') {
+                try {
+                    const { assistantConfigStore } = await import('$lib/stores/assistantConfigStore');
+                    assistantConfigStore.clearCache();
+                    console.log('Cleared assistant capabilities cache after API settings update');
+                } catch (cacheErr) {
+                    console.warn('Could not clear capabilities cache:', cacheErr);
+                }
+            }
+            
             // Refresh settings
             await fetchSettings();
-            alert('API settings updated successfully!');
+            // Success - settings refreshed
 
         } catch (err) {
             console.error('Error updating API settings:', err);
-            if (axios.isAxiosError(err) && err.response?.data?.detail) {
-                alert(`Error: ${err.response.data.detail}`);
-            } else {
-                alert('Error updating API settings');
-            }
+            // Error is logged to console
         }
     }
 
@@ -838,6 +913,8 @@
             fetchDashboard();
         } else if (currentView === 'users') {
             fetchUsers();
+        } else if (currentView === 'assistants') {
+            fetchAssistants();
         } else if (currentView === 'settings') {
             fetchSettings();
         }
@@ -853,6 +930,8 @@
             fetchDashboard();
         } else if (currentView === 'users' && orgUsers.length === 0) {
             fetchUsers();
+        } else if (currentView === 'assistants' && orgAssistants.length === 0) {
+            fetchAssistants();
         } else if (currentView === 'settings' && !signupSettings) {
             fetchSettings();
         }
@@ -874,19 +953,25 @@
                     </div>
                     <div class="ml-6 flex space-x-8">
                         <button
-                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'dashboard' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'dashboard' ? 'border-[#2271b3] text-[#2271b3]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
                             onclick={showDashboard}
                         >
                             Dashboard
                         </button>
                         <button
-                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'users' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'users' ? 'border-[#2271b3] text-[#2271b3]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
                             onclick={showUsers}
                         >
                             Users
                         </button>
                         <button
-                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'settings' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'assistants' ? 'border-[#2271b3] text-[#2271b3]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                            onclick={showAssistants}
+                        >
+                            Assistants Access
+                        </button>
+                        <button
+                            class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 {currentView === 'settings' ? 'border-[#2271b3] text-[#2271b3]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
                             onclick={showSettings}
                         >
                             Settings
@@ -953,7 +1038,8 @@
                                             </div>
                                             <button 
                                                 type="button"
-                                                class="ml-4 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-md transition-colors"
+                                                class="ml-4 px-3 py-1 text-white text-sm rounded-md transition-colors hover:opacity-90"
+                                                style="background-color: #2271b3;"
                                                 onclick={toggleSignupKeyVisibility}
                                             >
                                                 {showSignupKey ? 'Hide' : 'Show'}
@@ -1145,7 +1231,8 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-semibold text-gray-800">Manage Users</h2>
                         <button
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                            class="text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:opacity-90"
+                            style="background-color: #2271b3;"
                             onclick={openCreateUserModal}
                         >
                             Create User
@@ -1169,19 +1256,19 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #2271b3;">
                                             Name
                                         </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #2271b3;">
                                             Email
                                         </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #2271b3;">
                                             Role
                                         </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #2271b3;">
                                             Status
                                         </th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #2271b3;">
                                             Actions
                                         </th>
                                     </tr>
@@ -1196,7 +1283,7 @@
                                                 <div class="text-sm text-gray-800">{user.email}</div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
                                                     {user.role}
                                                 </span>
                                             </td>
@@ -1219,7 +1306,8 @@
                                                 <button
                                                     class={userData && userData.email === user.email && user.enabled 
                                                         ? "text-gray-400 cursor-not-allowed" 
-                                                        : "text-blue-600 hover:text-blue-800"}
+                                                        : "hover:opacity-80"}
+                                                    style={userData && userData.email === user.email && user.enabled ? "" : "color: #2271b3;"}
                                                     title={userData && userData.email === user.email && user.enabled 
                                                         ? "You cannot disable your own account" 
                                                         : (user.enabled ? 'Disable User' : 'Enable User')}
@@ -1245,6 +1333,162 @@
                                 </tbody>
                             </table>
                         </div>
+                    {/if}
+                </div>
+            {/if}
+
+            <!-- Assistants Access View -->
+            {#if currentView === 'assistants'}
+                <div class="mb-6">
+                    <!-- Assistants Header -->
+                    <div class="bg-white shadow-sm rounded-lg p-4 mb-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-800">Organization Assistants</h2>
+                                <p class="text-sm text-gray-600 mt-1">View and manage user access to all assistants in your organization</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="bg-white shadow-sm rounded-lg p-4 mb-4">
+                        <div class="flex gap-4 flex-wrap items-center">
+                            <div class="flex-1 min-w-[200px]">
+                                <input
+                                    type="text"
+                                    placeholder="Search assistants..."
+                                    bind:value={assistantsSearchQuery}
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="filter-published" class="text-sm font-medium text-gray-700">Filter:</label>
+                                <select
+                                    id="filter-published"
+                                    bind:value={assistantsFilterPublished}
+                                    class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="all">All Assistants</option>
+                                    <option value="published">Published Only</option>
+                                    <option value="unpublished">Unpublished Only</option>
+                                </select>
+                            </div>
+                            <button
+                                onclick={fetchAssistants}
+                                disabled={isLoadingAssistants}
+                                class="px-4 py-2 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                                style="background-color: #2271b3;"
+                            >
+                                {isLoadingAssistants ? 'Loading...' : 'Refresh'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Error Message -->
+                    {#if assistantsError}
+                        <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md">
+                            {assistantsError}
+                        </div>
+                    {/if}
+
+                    <!-- Loading State -->
+                    {#if isLoadingAssistants}
+                        <div class="bg-white shadow-sm rounded-lg p-8 text-center">
+                            <div class="text-gray-600">Loading assistants...</div>
+                        </div>
+                    {:else}
+                        {#if orgAssistants.filter(asst => {
+                            const matchesSearch = !assistantsSearchQuery || 
+                                asst.name.toLowerCase().includes(assistantsSearchQuery.toLowerCase()) ||
+                                asst.owner.toLowerCase().includes(assistantsSearchQuery.toLowerCase()) ||
+                                (asst.description && asst.description.toLowerCase().includes(assistantsSearchQuery.toLowerCase()));
+                            const matchesPublished = 
+                                assistantsFilterPublished === 'all' ||
+                                (assistantsFilterPublished === 'published' && asst.published) ||
+                                (assistantsFilterPublished === 'unpublished' && !asst.published);
+                            return matchesSearch && matchesPublished;
+                        }).length === 0}
+                            <!-- Empty State -->
+                            <div class="bg-white shadow-sm rounded-lg p-8 text-center">
+                                <div class="text-gray-600">
+                                    {#if assistantsSearchQuery || assistantsFilterPublished !== 'all'}
+                                        <p>No assistants match your search criteria.</p>
+                                        <button
+                                            onclick={() => { assistantsSearchQuery = ''; assistantsFilterPublished = 'all'; }}
+                                            class="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                                        >
+                                            Clear Filters
+                                        </button>
+                                    {:else}
+                                        <p>No assistants found in your organization.</p>
+                                    {/if}
+                                </div>
+                            </div>
+                        {:else}
+                            <!-- Assistants Table -->
+                            <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        {#each orgAssistants.filter(asst => {
+                                            const matchesSearch = !assistantsSearchQuery || 
+                                                asst.name.toLowerCase().includes(assistantsSearchQuery.toLowerCase()) ||
+                                                asst.owner.toLowerCase().includes(assistantsSearchQuery.toLowerCase()) ||
+                                                (asst.description && asst.description.toLowerCase().includes(assistantsSearchQuery.toLowerCase()));
+                                            const matchesPublished = 
+                                                assistantsFilterPublished === 'all' ||
+                                                (assistantsFilterPublished === 'published' && asst.published) ||
+                                                (assistantsFilterPublished === 'unpublished' && !asst.published);
+                                            return matchesSearch && matchesPublished;
+                                        }) as assistant}
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {assistant.name}
+                                                </td>
+                                                <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                                    {assistant.description || '—'}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono text-xs">
+                                                    {assistant.owner}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    {#if assistant.published}
+                                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                            Published
+                                                        </span>
+                                                    {:else}
+                                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                            Unpublished
+                                                        </span>
+                                                    {/if}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {formatDate(assistant.created_at)}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <button
+                                                        onclick={() => manageAssistantAccess(assistant)}
+                                                        class="px-3 py-1 text-white rounded-md text-xs hover:opacity-90"
+                                                        style="background-color: #2271b3;"
+                                                    >
+                                                        Manage Access
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {/if}
                     {/if}
                 </div>
             {/if}
@@ -1327,7 +1571,8 @@
 
                                     <button
                                         onclick={updateSignupSettings}
-                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                                        class="text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:opacity-90"
+                                        style="background-color: #2271b3;"
                                     >
                                         Update Signup Settings
                                     </button>
@@ -1463,7 +1708,8 @@
                                                         <h4 class="font-medium text-gray-900 capitalize">{providerName}</h4>
                                                         <button
                                                             type="button"
-                                                            class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                            class="px-3 py-1 text-sm text-white rounded hover:opacity-90"
+                                                            style="background-color: #2271b3;"
                                                             onclick={() => openModelModal(providerName, models)}
                                                         >
                                                             Manage Models
@@ -1527,7 +1773,8 @@
 
                                     <button
                                         onclick={updateApiSettings}
-                                        class="{hasUnsavedChanges ? 'bg-green-600 hover:bg-green-700 ring-2 ring-green-300' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-all duration-200"
+                                        class="text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-all duration-200 hover:opacity-90 {hasUnsavedChanges ? 'ring-2 ring-green-300' : ''}"
+                                        style="background-color: {hasUnsavedChanges ? '#16a34a' : '#2271b3'};"
                                     >
                                         {hasUnsavedChanges ? '💾 Commit Changes' : 'Update API Settings'}
                                     </button>
@@ -1564,7 +1811,8 @@
 
                                     <div class="flex items-center gap-3">
                                         <button
-                                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+                                            class="text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 hover:opacity-90"
+                                            style="background-color: #2271b3;"
                                             onclick={updateAssistantDefaults}
                                             disabled={isLoadingAssistantDefaults}
                                         >
@@ -1686,7 +1934,8 @@
                             </button>
                             <button 
                                 type="submit" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50" 
+                                class="text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 hover:opacity-90" 
+                                style="background-color: #2271b3;"
                                 disabled={isCreatingUser}
                             >
                                 {#if isCreatingUser}
@@ -1755,7 +2004,8 @@
                             </button>
                             <button 
                                 type="submit" 
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50" 
+                                class="text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 hover:opacity-90" 
+                                style="background-color: #2271b3;"
                                 disabled={isChangingPassword}
                             >
                                 {isChangingPassword ? 'Changing...' : 'Change Password'}
@@ -1838,7 +2088,8 @@
                     <div class="flex flex-col justify-center items-center space-y-2">
                         <button
                             type="button"
-                            class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                            class="px-3 py-2 text-white rounded disabled:opacity-50 hover:opacity-90"
+                            style="background-color: #2271b3;"
                             onclick={moveAllToEnabled}
                             disabled={modalDisabledModels.length === 0}
                             title="Move all models to enabled"
@@ -1847,7 +2098,8 @@
                         </button>
                         <button
                             type="button"
-                            class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                            class="px-3 py-2 text-white rounded disabled:opacity-50 hover:opacity-90"
+                            style="background-color: #2271b3;"
                             onclick={moveSelectedToEnabled}
                             disabled={selectedDisabledModels.length === 0}
                             title="Move selected models to enabled"
@@ -1926,18 +2178,27 @@
                     >
                         Cancel
                     </button>
-                    <button
-                        type="button"
-                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                        onclick={saveModelSelection}
-                    >
-                        Save Changes
-                    </button>
+                        <button
+                            type="button"
+                            class="px-4 py-2 text-white rounded hover:opacity-90"
+                            style="background-color: #2271b3;"
+                            onclick={saveModelSelection}
+                        >
+                            Save Changes
+                        </button>
                 </div>
             </div>
         </div>
     </div>
 {/if}
+
+<!-- Assistant Access Manager Modal -->
+<AssistantAccessManager
+    assistant={selectedAssistant}
+    bind:show={showAccessModal}
+    on:close={closeAccessModal}
+    on:updated={handleAccessUpdated}
+/>
 
 <style>
     /* Custom scrollbar styles */

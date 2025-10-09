@@ -210,7 +210,9 @@ Example Success Response:
     "email": "user@example.com",
     "launch_url": "http://localhost:3000/?token=...",
     "user_id": "some-uuid",
-    "role": "user"
+    "role": "user",
+    "user_type": "creator",
+    "organization_role": "admin"
   }
 }
 ```
@@ -243,7 +245,8 @@ async def login(email: str = Form(...), password: str = Form(...)):
                 "launch_url": result["data"]["launch_url"],
                 "user_id": result["data"]["user_id"],
                 "role": result["data"]["role"],
-                "user_type": result["data"].get("user_type", "creator")  # Include user_type
+                "user_type": result["data"].get("user_type", "creator"),  # Include user_type
+                "organization_role": result["data"].get("organization_role")  # Include organization role
             }
         }
     else:

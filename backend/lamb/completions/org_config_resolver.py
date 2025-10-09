@@ -41,11 +41,16 @@ class OrganizationConfigResolver:
                 logger.error(f"User {self.assistant_owner} not found")
                 raise ValueError(f"User {self.assistant_owner} not found")
             
-            # Get organization from user
-            self._org = self.db_manager.get_organization_by_id(user.organization_id)
+            # Get organization from user (user is a dict, not an object)
+            org_id = user.get('organization_id') if isinstance(user, dict) else getattr(user, 'organization_id', None)
+            if not org_id:
+                logger.error(f"No organization_id for user {self.assistant_owner}")
+                raise ValueError(f"No organization found for user {self.assistant_owner}")
+            
+            self._org = self.db_manager.get_organization_by_id(org_id)
             if not self._org:
-                logger.error(f"Organization {user.organization_id} not found for user {self.assistant_owner}")
-                raise ValueError(f"Organization {user.organization_id} not found for user {self.assistant_owner}")
+                logger.error(f"Organization {org_id} not found for user {self.assistant_owner}")
+                raise ValueError(f"Organization {org_id} not found for user {self.assistant_owner}")
         return self._org
     
     def get_provider_config(self, provider: str) -> Dict[str, Any]:
@@ -62,11 +67,15 @@ class OrganizationConfigResolver:
         if cache_key in self._config_cache:
             return self._config_cache[cache_key]
             
-        # Try to get from organization config
-        config = self.organization.get_provider_config(provider, self.setup_name)
+        # Try to get from organization config (organization is a dict)
+        org_config = self.organization.get('config', {})
+        setups = org_config.get('setups', {})
+        setup = setups.get(self.setup_name, {})
+        providers = setup.get('providers', {})
+        config = providers.get(provider, {})
         
         # If not found and this is the system organization, fallback to env vars
-        if not config and self.organization.is_system:
+        if not config and self.organization.get('is_system', False):
             logger.info(f"Falling back to environment variables for {provider}")
             config = self._load_from_env(provider)
             
@@ -78,11 +87,13 @@ class OrganizationConfigResolver:
     
     def get_knowledge_base_config(self) -> Dict[str, Any]:
         """Get knowledge base configuration"""
-        setup = self.organization.get_setup(self.setup_name)
-        kb_config = setup.get("knowledge_base", {}) if setup else {}
+        org_config = self.organization.get('config', {})
+        setups = org_config.get('setups', {})
+        setup = setups.get(self.setup_name, {})
+        kb_config = setup.get("knowledge_base", {})
         
         # Fallback to env vars for system org
-        if not kb_config and self.organization.is_system:
+        if not kb_config and self.organization.get('is_system', False):
             kb_config = {
                 "server_url": os.getenv('LAMB_KB_SERVER', 'http://localhost:9090'),
                 "api_token": os.getenv('LAMB_KB_SERVER_TOKEN', '0p3n-w3bu!')
@@ -92,7 +103,8 @@ class OrganizationConfigResolver:
     
     def get_feature_flag(self, feature: str) -> bool:
         """Get feature flag value"""
-        features = self.organization.config.get("features", {})
+        org_config = self.organization.get('config', {})
+        features = org_config.get("features", {})
         return features.get(feature, False)
     
     def _load_from_env(self, provider: str) -> Dict[str, Any]:

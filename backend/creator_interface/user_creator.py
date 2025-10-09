@@ -2,6 +2,7 @@ import httpx
 import os
 from typing import Optional, Dict, Any
 import config
+from lamb.database_manager import LambDatabaseManager
 
 
 class UserCreatorManager:
@@ -264,6 +265,19 @@ class UserCreatorManager:
                         # The URL is returned directly as text
                         launch_url = owi_response.text.strip('"')
                     print(f"Launch URL: {launch_url}")
+                    
+                    # Fetch organization role if user belongs to an organization
+                    organization_role = None
+                    db_manager = LambDatabaseManager()
+                    creator_user = db_manager.get_creator_user_by_email(email)
+                    
+                    if creator_user and creator_user.get('organization_id'):
+                        organization_role = db_manager.get_user_organization_role(
+                            user_id=creator_user['id'],
+                            organization_id=creator_user['organization_id']
+                        )
+                        print(f"User {email} has organization role: {organization_role}")
+                    
                     data_to_return = {
                         "success": True,
                         "data": {
@@ -273,7 +287,8 @@ class UserCreatorManager:
                             "launch_url": launch_url,
                             "user_id": data.get("id"),
                             "role": data.get("role", "user"),  # Include role from response, default to 'user'
-                            "user_type": data.get("user_type", "creator")  # Include user_type from response
+                            "user_type": data.get("user_type", "creator"),  # Include user_type from response
+                            "organization_role": organization_role  # Include organization role
                         },
                         "error": None
                     }

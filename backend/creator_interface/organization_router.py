@@ -52,7 +52,7 @@ def get_user_organization_admin_info(auth_header: str) -> Optional[Dict[str, Any
             return None
         
         org_id = user_details['organization_id']
-        org_role = db_manager.get_user_organization_role(org_id, user_id)
+        org_role = db_manager.get_user_organization_role(user_id, org_id)
         
         if org_role != "admin":
             return None
@@ -565,7 +565,7 @@ async def create_organization_enhanced(
         if admin_user:
             system_org = db_manager.get_organization_by_slug("lamb")
             if system_org:
-                current_role = db_manager.get_user_organization_role(system_org['id'], org_data.admin_user_id)
+                current_role = db_manager.get_user_organization_role(org_data.admin_user_id, system_org['id'])
                 if current_role == "admin":
                     raise HTTPException(
                         status_code=400, 
@@ -1829,8 +1829,34 @@ async def update_api_settings(request: Request, settings: OrgAdminApiSettings, o
             for provider_name, model_list in settings.selected_models.items():
                 if provider_name not in providers:
                     providers[provider_name] = {}
-                providers[provider_name]['enabled_models'] = model_list
+                providers[provider_name]['models'] = model_list
                 logger.info(f"Updated {provider_name} enabled models: {len(model_list)} models selected")
+            
+            # Auto-update assistant_defaults if current default model is not in enabled list
+            if 'assistant_defaults' not in config:
+                config['assistant_defaults'] = {}
+            
+            assistant_defaults = config['assistant_defaults']
+            current_connector = assistant_defaults.get('connector')
+            current_llm = assistant_defaults.get('llm')
+            
+            # Check if current connector's default model is still valid
+            if current_connector and current_connector in settings.selected_models:
+                enabled_models_for_connector = settings.selected_models[current_connector]
+                
+                # If current llm is not in the newly enabled models list
+                if current_llm and current_llm not in enabled_models_for_connector:
+                    if enabled_models_for_connector:  # If there are models enabled
+                        # Update to first enabled model
+                        new_default_llm = enabled_models_for_connector[0]
+                        assistant_defaults['llm'] = new_default_llm
+                        config['assistant_defaults'] = assistant_defaults
+                        logger.info(f"Auto-updated assistant_defaults.llm from '{current_llm}' to '{new_default_llm}' (not in enabled models for {current_connector})")
+                    else:
+                        # No models enabled for this connector - clear the default
+                        logger.warning(f"No models enabled for connector '{current_connector}', clearing assistant_defaults.llm")
+                        assistant_defaults['llm'] = ''
+                        config['assistant_defaults'] = assistant_defaults
         
         # Legacy support: Update available models (deprecated)
         if settings.available_models is not None:
@@ -1856,6 +1882,348 @@ async def update_api_settings(request: Request, settings: OrgAdminApiSettings, o
         logger.error(f"Error updating API settings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ============================================================================
+# ORGANIZATION ADMIN ASSISTANT MANAGEMENT ENDPOINTS
+# These endpoints allow organization admins to view and manage access to 
+# assistants within their organization
+# ============================================================================
+
+class AssistantAccessUpdate(BaseModel):
+    user_emails: List[str] = Field(..., description="List of user emails to grant/revoke access")
+    action: str = Field(..., description="Action to perform: 'grant' or 'revoke'")
+
+class AssistantListItem(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    owner: str
+    published: bool
+    group_id: Optional[str]
+    created_at: int
+
+class AssistantAccessInfo(BaseModel):
+    assistant: AssistantListItem
+    users_with_access: List[str]  # emails
+    organization_users: List[Dict[str, Any]]  # all org users for selection
+
+@router.get(
+    "/org-admin/assistants",
+    tags=["Organization Admin - Assistant Management"],
+    summary="List All Organization Assistants",
+    description="""List all assistants in the organization admin's organization.
+    
+Example Request:
+```bash
+curl -X GET 'http://localhost:8000/creator/admin/org-admin/assistants' \\
+-H 'Authorization: Bearer <org_admin_token>'
+```
+
+Example Response:
+```json
+{
+  "assistants": [
+    {
+      "id": 1,
+      "name": "Math_Tutor",
+      "description": "Helps with math problems",
+      "owner": "prof@university.edu",
+      "published": true,
+      "group_id": "assistant_1",
+      "created_at": 1678886400
+    }
+  ]
+}
+```
+    """,
+    dependencies=[Depends(security)]
+)
+async def list_organization_assistants(request: Request, org: Optional[str] = None):
+    """List all assistants in the organization"""
+    try:
+        # If org parameter is provided, get organization by slug
+        target_org_id = None
+        if org:
+            target_organization = db_manager.get_organization_by_slug(org)
+            if not target_organization:
+                raise HTTPException(status_code=404, detail=f"Organization '{org}' not found")
+            target_org_id = target_organization['id']
+        
+        admin_info = await verify_organization_admin_access(request, target_org_id)
+        org_id = admin_info['organization_id']
+        
+        # Get all assistants in organization
+        assistants = db_manager.get_assistants_by_organization(org_id)
+        
+        # Format response
+        assistants_list = []
+        for asst in assistants:
+            assistants_list.append(AssistantListItem(
+                id=asst['id'],
+                name=asst['name'],
+                description=asst.get('description'),
+                owner=asst['owner'],
+                published=asst.get('published', False),
+                group_id=asst.get('group_id'),
+                created_at=asst.get('created_at', 0)
+            ))
+        
+        return {"assistants": assistants_list}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing organization assistants: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get(
+    "/org-admin/assistants/{assistant_id}/access",
+    tags=["Organization Admin - Assistant Management"],
+    summary="Get Assistant Access Info",
+    description="""Get information about who has access to an assistant and all organization users.
+    
+Example Request:
+```bash
+curl -X GET 'http://localhost:8000/creator/admin/org-admin/assistants/123/access' \\
+-H 'Authorization: Bearer <org_admin_token>'
+```
+
+Example Response:
+```json
+{
+  "assistant": {
+    "id": 123,
+    "name": "Math_Tutor",
+    "owner": "prof@university.edu",
+    "published": true,
+    "group_id": "assistant_123"
+  },
+  "users_with_access": [
+    "prof@university.edu",
+    "student1@university.edu"
+  ],
+  "organization_users": [
+    {
+      "id": 1,
+      "email": "prof@university.edu",
+      "name": "Professor Smith",
+      "user_type": "creator",
+      "is_owner": true
+    },
+    {
+      "id": 2,
+      "email": "student1@university.edu",
+      "name": "Student One",
+      "user_type": "end_user",
+      "is_owner": false
+    }
+  ]
+}
+```
+    """,
+    dependencies=[Depends(security)],
+    response_model=AssistantAccessInfo
+)
+async def get_assistant_access(request: Request, assistant_id: int, org: Optional[str] = None):
+    """Get access information for an assistant"""
+    try:
+        # If org parameter is provided, get organization by slug
+        target_org_id = None
+        if org:
+            target_organization = db_manager.get_organization_by_slug(org)
+            if not target_organization:
+                raise HTTPException(status_code=404, detail=f"Organization '{org}' not found")
+            target_org_id = target_organization['id']
+        
+        admin_info = await verify_organization_admin_access(request, target_org_id)
+        org_id = admin_info['organization_id']
+        
+        # Get assistant and verify it belongs to this organization
+        assistants = db_manager.get_assistants_by_organization(org_id)
+        assistant = next((a for a in assistants if a['id'] == assistant_id), None)
+        
+        if not assistant:
+            raise HTTPException(
+                status_code=404, 
+                detail="Assistant not found in this organization"
+            )
+        
+        # Get users with access (from OWI group)
+        users_with_access = []
+        if assistant.get('group_id'):
+            from lamb.owi_bridge.owi_group import OwiGroupManager
+            group_manager = OwiGroupManager()
+            users_with_access = group_manager.get_group_users_by_emails(assistant['group_id'])
+        
+        # Get all organization users
+        org_users = db_manager.get_organization_users(org_id)
+        organization_users = []
+        for user in org_users:
+            organization_users.append({
+                "id": user['id'],
+                "email": user['email'],
+                "name": user['name'],
+                "user_type": user.get('user_type', 'creator'),
+                "is_owner": user['email'] == assistant['owner']
+            })
+        
+        return AssistantAccessInfo(
+            assistant=AssistantListItem(
+                id=assistant['id'],
+                name=assistant['name'],
+                description=assistant.get('description'),
+                owner=assistant['owner'],
+                published=assistant.get('published', False),
+                group_id=assistant.get('group_id'),
+                created_at=assistant.get('created_at', 0)
+            ),
+            users_with_access=users_with_access,
+            organization_users=organization_users
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting assistant access info: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put(
+    "/org-admin/assistants/{assistant_id}/access",
+    tags=["Organization Admin - Assistant Management"],
+    summary="Update Assistant Access",
+    description="""Grant or revoke access to an assistant for multiple users.
+    The owner cannot be removed from access.
+    
+Example Request (Grant Access):
+```bash
+curl -X PUT 'http://localhost:8000/creator/admin/org-admin/assistants/123/access' \\
+-H 'Authorization: Bearer <org_admin_token>' \\
+-H 'Content-Type: application/json' \\
+-d '{
+  "user_emails": ["student1@university.edu", "student2@university.edu"],
+  "action": "grant"
+}'
+```
+
+Example Request (Revoke Access):
+```bash
+curl -X PUT 'http://localhost:8000/creator/admin/org-admin/assistants/123/access' \\
+-H 'Authorization: Bearer <org_admin_token>' \\
+-H 'Content-Type: application/json' \\
+-d '{
+  "user_emails": ["student1@university.edu"],
+  "action": "revoke"
+}'
+```
+
+Example Success Response:
+```json
+{
+  "message": "Access updated successfully",
+  "results": {
+    "added": ["student1@university.edu", "student2@university.edu"],
+    "removed": [],
+    "already_member": [],
+    "not_found": [],
+    "errors": []
+  }
+}
+```
+    """,
+    dependencies=[Depends(security)]
+)
+async def update_assistant_access(
+    request: Request, 
+    assistant_id: int, 
+    access_update: AssistantAccessUpdate,
+    org: Optional[str] = None
+):
+    """Grant or revoke access to an assistant for users"""
+    try:
+        # If org parameter is provided, get organization by slug
+        target_org_id = None
+        if org:
+            target_organization = db_manager.get_organization_by_slug(org)
+            if not target_organization:
+                raise HTTPException(status_code=404, detail=f"Organization '{org}' not found")
+            target_org_id = target_organization['id']
+        
+        admin_info = await verify_organization_admin_access(request, target_org_id)
+        org_id = admin_info['organization_id']
+        
+        # Validate action
+        if access_update.action not in ['grant', 'revoke']:
+            raise HTTPException(
+                status_code=400, 
+                detail="Action must be 'grant' or 'revoke'"
+            )
+        
+        # Get assistant and verify it belongs to this organization
+        assistants = db_manager.get_assistants_by_organization(org_id)
+        assistant = next((a for a in assistants if a['id'] == assistant_id), None)
+        
+        if not assistant:
+            raise HTTPException(
+                status_code=404, 
+                detail="Assistant not found in this organization"
+            )
+        
+        # Check if assistant has a group
+        if not assistant.get('group_id'):
+            raise HTTPException(
+                status_code=400,
+                detail="Assistant does not have an OWI group. Only published assistants can have access managed."
+            )
+        
+        # Prevent owner from being removed
+        if access_update.action == 'revoke' and assistant['owner'] in access_update.user_emails:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot remove the assistant owner from access"
+            )
+        
+        # Verify all users belong to the organization
+        org_users = db_manager.get_organization_users(org_id)
+        org_user_emails = {user['email'] for user in org_users}
+        
+        for email in access_update.user_emails:
+            if email not in org_user_emails:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"User {email} does not belong to this organization"
+                )
+        
+        # Perform the action
+        from lamb.owi_bridge.owi_group import OwiGroupManager
+        group_manager = OwiGroupManager()
+        
+        if access_update.action == 'grant':
+            result = group_manager.add_users_to_group(
+                assistant['group_id'], 
+                access_update.user_emails
+            )
+        else:  # revoke
+            result = group_manager.remove_users_from_group(
+                assistant['group_id'], 
+                access_update.user_emails
+            )
+        
+        if result.get('status') == 'error':
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update access: {result.get('error')}"
+            )
+        
+        return {
+            "message": "Access updated successfully",
+            "results": result.get('results', {})
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating assistant access: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Assistant Defaults Management Endpoints
 

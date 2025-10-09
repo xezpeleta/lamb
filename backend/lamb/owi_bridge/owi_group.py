@@ -2,7 +2,7 @@ import uuid
 import json
 import logging
 import time
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from .owi_database import OwiDatabaseManager
 from .owi_users import OwiUserManager
 
@@ -427,4 +427,118 @@ class OwiGroupManager:
             
         except Exception as e:
             logging.error(f"Error getting all groups: {e}")
+            return []
+    
+    def add_users_to_group(self, group_id: str, user_emails: List[str]) -> Dict[str, Any]:
+        """
+        Add multiple users to a group by their email addresses
+        
+        Args:
+            group_id: ID of the group
+            user_emails: List of user email addresses to add
+            
+        Returns:
+            Dict with status and results
+        """
+        try:
+            results = {
+                "added": [],
+                "already_member": [],
+                "not_found": [],
+                "errors": []
+            }
+            
+            for email in user_emails:
+                result = self.add_user_to_group_by_email(group_id, email)
+                
+                if result.get("status") == "success":
+                    results["added"].append(email)
+                elif result.get("status") == "error":
+                    error_msg = result.get("error", "")
+                    if "already a member" in error_msg.lower():
+                        results["already_member"].append(email)
+                    elif "not found" in error_msg.lower():
+                        results["not_found"].append(email)
+                    else:
+                        results["errors"].append({"email": email, "error": error_msg})
+            
+            return {
+                "status": "success",
+                "results": results
+            }
+            
+        except Exception as e:
+            logging.error(f"Error adding users to group: {e}")
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}"
+            }
+    
+    def remove_users_from_group(self, group_id: str, user_emails: List[str]) -> Dict[str, Any]:
+        """
+        Remove multiple users from a group by their email addresses
+        
+        Args:
+            group_id: ID of the group
+            user_emails: List of user email addresses to remove
+            
+        Returns:
+            Dict with status and results
+        """
+        try:
+            user_manager = OwiUserManager()
+            results = {
+                "removed": [],
+                "not_found": [],
+                "errors": []
+            }
+            
+            for email in user_emails:
+                try:
+                    # Get user by email
+                    user = user_manager.get_user_by_email(email)
+                    if not user:
+                        results["not_found"].append(email)
+                        continue
+                    
+                    # Remove user from group
+                    success = self.remove_user_from_group(group_id, user['id'])
+                    if success:
+                        results["removed"].append(email)
+                    else:
+                        results["errors"].append({"email": email, "error": "Failed to remove from group"})
+                        
+                except Exception as e:
+                    results["errors"].append({"email": email, "error": str(e)})
+            
+            return {
+                "status": "success",
+                "results": results
+            }
+            
+        except Exception as e:
+            logging.error(f"Error removing users from group: {e}")
+            return {
+                "status": "error",
+                "error": f"Unexpected error: {str(e)}"
+            }
+    
+    def get_group_users_by_emails(self, group_id: str) -> List[str]:
+        """
+        Get list of user emails in a group
+        
+        Args:
+            group_id: ID of the group
+            
+        Returns:
+            List of user email addresses
+        """
+        try:
+            users = self.get_group_users(group_id)
+            if users:
+                return [user.get('email') for user in users if user.get('email')]
+            return []
+            
+        except Exception as e:
+            logging.error(f"Error getting group user emails: {e}")
             return []

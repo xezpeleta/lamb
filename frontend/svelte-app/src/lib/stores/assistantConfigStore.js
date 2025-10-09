@@ -155,7 +155,12 @@ function createAssistantConfigStore() {
                     }
                     const capabilitiesUrl = `${lambServerBase.replace(/\/$/, '')}/lamb/v1/completions/list`; 
                     console.log(`assistantConfigStore: Fetching capabilities from: ${capabilitiesUrl}`);
-                    const capsResponse = await axios.get(capabilitiesUrl);
+                    
+                    // Include auth token for organization-aware model lists
+                    const token = browser ? localStorage.getItem('userToken') : null;
+                    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                    
+                    const capsResponse = await axios.get(capabilitiesUrl, { headers });
                     capabilities = capsResponse.data; // Assign fetched data
                     console.log('Fetched Capabilities (raw):', capabilities);
                     setCachedData(CAPABILITIES_CACHE_KEY, capabilities); // Save to cache
@@ -214,6 +219,14 @@ function createAssistantConfigStore() {
             console.log('assistantConfigStore: Resetting store to initial state.');
             set(initialState); // Resets timestamp as well
         },
+        clearCache: () => {
+            console.log('assistantConfigStore: Clearing cached capabilities and defaults.');
+            if (browser) {
+                localStorage.removeItem(CAPABILITIES_CACHE_KEY);
+                localStorage.removeItem(DEFAULTS_CACHE_KEY);
+            }
+            set(initialState); // Reset store state as well
+        }
     };
 }
 
