@@ -912,10 +912,11 @@
                     console.warn('Could not clear capabilities cache:', cacheErr);
                 }
             }
-            
-            // Refresh settings
+
+            // Refresh settings and dashboard data
             await fetchSettings();
-            // Success - settings refreshed
+            await fetchDashboard();
+            // Success - data refreshed
 
         } catch (err) {
             console.error('Error updating API settings:', err);
@@ -1692,6 +1693,14 @@
                                                 {#if providerStatus.status === 'working'}
                                                     <div class="text-sm text-gray-600 mb-2">
                                                         <strong>{providerStatus.model_count}</strong> models available
+                                                        {#if providerStatus.enabled_models && providerStatus.enabled_models.length > 0}
+                                                            <span class="text-blue-600">• <strong>{providerStatus.enabled_models.length}</strong> selected</span>
+                                                            {#if providerStatus.default_model}
+                                                                <span class="text-green-600">• Default: {providerStatus.default_model}</span>
+                                                            {/if}
+                                                        {:else}
+                                                            <span class="text-gray-500">• No models selected</span>
+                                                        {/if}
                                                     </div>
                                                     {#if providerStatus.models && providerStatus.models.length > 0}
                                                         <div class="text-xs text-gray-500">
