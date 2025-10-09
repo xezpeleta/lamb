@@ -1733,7 +1733,7 @@ async def get_api_settings(request: Request, org: Optional[str] = None):
                 
                 # Get selected models from provider config
                 provider_config = providers.get(provider_name, {})
-                selected_models[provider_name] = provider_config.get("enabled_models", [])
+                selected_models[provider_name] = provider_config.get("models", [])
                 
                 # If no models are explicitly selected, default to all available
                 if not selected_models[provider_name] and available_models[provider_name]:
