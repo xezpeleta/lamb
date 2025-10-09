@@ -175,7 +175,34 @@
         }
         newApiSettings.selected_models[modalProviderName] = [...modalEnabledModels];
         newApiSettings.selected_models = { ...newApiSettings.selected_models };
-        
+
+        // Ensure default model is valid after model changes
+        if (!newApiSettings.default_models) {
+            newApiSettings.default_models = {};
+        }
+
+        const currentDefault = newApiSettings.default_models[modalProviderName] || "";
+        const enabledModels = newApiSettings.selected_models[modalProviderName] || [];
+
+        if (currentDefault && !enabledModels.includes(currentDefault)) {
+            // Current default is not in enabled models
+            if (enabledModels.length > 0) {
+                // Auto-select first enabled model as default
+                newApiSettings.default_models[modalProviderName] = enabledModels[0];
+                addPendingChange(`Default model auto-corrected for ${modalProviderName}`);
+            } else {
+                // No models enabled, clear default
+                newApiSettings.default_models[modalProviderName] = "";
+            }
+        } else if (!currentDefault && enabledModels.length > 0) {
+            // No default set but models are enabled, auto-select first one
+            newApiSettings.default_models[modalProviderName] = enabledModels[0];
+            addPendingChange(`Default model set for ${modalProviderName}`);
+        }
+
+        // Ensure default_models is reactive
+        newApiSettings.default_models = { ...newApiSettings.default_models };
+
         // Track this as a pending change
         addPendingChange(`Model selection updated for ${modalProviderName}`);
         closeModelModal();
@@ -705,8 +732,19 @@
                 ollama_base_url: apiSettings.ollama_base_url || 'http://localhost:11434',
                 available_models: Array.isArray(apiSettings.available_models) ? [...apiSettings.available_models] : [],
                 model_limits: { ...(apiSettings.model_limits || {}) },
-                selected_models: { ...(apiSettings.selected_models || {}) }
+                selected_models: { ...(apiSettings.selected_models || {}) },
+                default_models: { ...(apiSettings.default_models || {}) }
             };
+
+            // Auto-initialize default models for providers that have enabled models but no default set
+            if (newApiSettings.selected_models) {
+                for (const [providerName, enabledModels] of Object.entries(newApiSettings.selected_models)) {
+                    if (enabledModels && enabledModels.length > 0 && !newApiSettings.default_models[providerName]) {
+                        // No default set, auto-select first enabled model
+                        newApiSettings.default_models[providerName] = enabledModels[0];
+                    }
+                }
+            }
 
             // Fetch assistant defaults for this organization
             await fetchAssistantDefaults();
@@ -1165,6 +1203,57 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- Enabled Models per Connector -->
+                                        {#if dashboardData.api_status && Object.keys(dashboardData.api_status.providers).length > 0}
+                                            <div class="mt-6">
+                                                <h4 class="text-sm font-medium text-gray-900 mb-3">Enabled Models by Connector</h4>
+                                                <div class="space-y-3">
+                                                    {#each Object.entries(dashboardData.api_status.providers) as [providerName, providerStatus]}
+                                                        <div class="bg-gray-50 rounded-lg p-3">
+                                                            <div class="flex items-center justify-between mb-2">
+                                                                <h5 class="font-medium text-gray-900 capitalize">{providerName}</h5>
+                                                                <span class="px-2 py-1 text-xs rounded-full {
+                                                                    providerStatus.status === 'working' ? 'bg-green-100 text-green-800' :
+                                                                    'bg-gray-100 text-gray-800'
+                                                                }">
+                                                                    {providerStatus.status}
+                                                                </span>
+                                                            </div>
+
+                                                            {#if providerStatus.enabled_models && providerStatus.enabled_models.length > 0}
+                                                                <div class="mb-2">
+                                                                    <div class="text-xs text-gray-600 mb-1">
+                                                                        <strong>{providerStatus.enabled_models.length}</strong> models enabled
+                                                                        {#if providerStatus.default_model}
+                                                                            <span class="text-blue-600">• Default: {providerStatus.default_model}</span>
+                                                                        {/if}
+                                                                    </div>
+                                                                    <div class="flex flex-wrap gap-1">
+                                                                        {#each providerStatus.enabled_models.slice(0, 8) as model}
+                                                                            <span class="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded {
+                                                                                model === providerStatus.default_model ? 'ring-2 ring-blue-300' : ''
+                                                                            }">
+                                                                                {model}
+                                                                            </span>
+                                                                        {/each}
+                                                                        {#if providerStatus.enabled_models.length > 8}
+                                                                            <span class="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                                                                                +{providerStatus.enabled_models.length - 8} more
+                                                                            </span>
+                                                                        {/if}
+                                                                    </div>
+                                                                </div>
+                                                            {:else}
+                                                                <div class="text-xs text-gray-500 italic">
+                                                                    No models enabled
+                                                                </div>
+                                                            {/if}
+                                                        </div>
+                                                    {/each}
+                                                </div>
+                                            </div>
+                                        {/if}
                                     </div>
                                 </div>
                             </div>
@@ -1733,6 +1822,29 @@
                                                             <p class="text-gray-500 text-sm italic">No models enabled</p>
                                                         {/if}
                                                     </div>
+
+                                                    <!-- Default Model Selection -->
+                                                    {#if newApiSettings.selected_models?.[providerName]?.length > 0}
+                                                        <div class="mt-3">
+                                                            <label for="default-model-{providerName}" class="block text-sm font-medium text-gray-700 mb-2">
+                                                                Default Model
+                                                            </label>
+                                                            <select
+                                                                id="default-model-{providerName}"
+                                                                bind:value={newApiSettings.default_models[providerName]}
+                                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                onchange={() => addPendingChange(`Default model changed for ${providerName}`)}
+                                                            >
+                                                                <option value="">Select a default model...</option>
+                                                                {#each newApiSettings.selected_models[providerName] as model}
+                                                                    <option value={model}>{model}</option>
+                                                                {/each}
+                                                            </select>
+                                                            <p class="mt-1 text-xs text-gray-500">
+                                                                This model will be used as the default when creating new assistants for this provider.
+                                                            </p>
+                                                        </div>
+                                                    {/if}
                                                 </div>
                                             {/each}
                                         {:else}

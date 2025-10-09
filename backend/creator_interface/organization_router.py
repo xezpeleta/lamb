@@ -1231,13 +1231,14 @@ class OrgAdminSignupSettings(BaseModel):
 
 class OrgAdminApiSettings(BaseModel):
     model_config = {"protected_namespaces": ()}
-    
+
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
     openai_base_url: Optional[str] = Field(None, description="OpenAI API base URL (default: https://api.openai.com/v1)")
     ollama_base_url: Optional[str] = Field(None, description="Ollama server base URL (default: http://localhost:11434)")
     available_models: Optional[List[str]] = Field(None, description="List of available models (deprecated)")
     model_limits: Optional[Dict[str, Any]] = Field(None, description="Model usage limits")
     selected_models: Optional[Dict[str, List[str]]] = Field(None, description="Selected models per provider")
+    default_models: Optional[Dict[str, str]] = Field(None, description="Default model per provider")
 
 class OrgUserResponse(BaseModel):
     id: int
@@ -1320,6 +1321,18 @@ async def get_organization_dashboard(request: Request, org: Optional[str] = None
                 "providers": {},
                 "summary": {"configured_count": 0, "working_count": 0, "total_models": 0}
             }
+
+        # Get enabled models for each provider
+        setups = config.get('setups', {})
+        default_setup = setups.get('default', {})
+        providers = default_setup.get('providers', {})
+
+        for provider_name in api_status.get("providers", {}):
+            if provider_name in providers:
+                provider_config = providers[provider_name]
+                enabled_models = provider_config.get('models', [])
+                api_status["providers"][provider_name]["enabled_models"] = enabled_models
+                api_status["providers"][provider_name]["default_model"] = provider_config.get('default_model', '')
         
         dashboard_info = {
             "organization": {
@@ -1723,21 +1736,25 @@ async def get_api_settings(request: Request, org: Optional[str] = None):
             logger.error(f"Error checking API status for settings: {e}")
             api_status = {"providers": {}}
         
-        # Get currently selected models for each provider
+        # Get currently selected models and default models for each provider
         selected_models = {}
+        default_models = {}
         available_models = {}
-        
+
         for provider_name, provider_status in api_status.get("providers", {}).items():
             if provider_status.get("status") == "working":
                 available_models[provider_name] = provider_status.get("models", [])
-                
+
                 # Get selected models from provider config
                 provider_config = providers.get(provider_name, {})
                 selected_models[provider_name] = provider_config.get("models", [])
-                
+
                 # If no models are explicitly selected, default to all available
                 if not selected_models[provider_name] and available_models[provider_name]:
                     selected_models[provider_name] = available_models[provider_name].copy()
+
+                # Get default model from provider config
+                default_models[provider_name] = provider_config.get("default_model", "")
         
         return {
             "openai_api_key_set": bool(providers.get('openai', {}).get('api_key')),
@@ -1745,6 +1762,7 @@ async def get_api_settings(request: Request, org: Optional[str] = None):
             "ollama_base_url": providers.get('ollama', {}).get('base_url', 'http://localhost:11434'),
             "available_models": available_models,
             "selected_models": selected_models,
+            "default_models": default_models,
             "api_status": api_status
         }
         
@@ -1831,19 +1849,44 @@ async def update_api_settings(request: Request, settings: OrgAdminApiSettings, o
                     providers[provider_name] = {}
                 providers[provider_name]['models'] = model_list
                 logger.info(f"Updated {provider_name} enabled models: {len(model_list)} models selected")
-            
+
+        # Update default models per provider
+        if settings.default_models is not None:
+            for provider_name, default_model in settings.default_models.items():
+                if provider_name not in providers:
+                    providers[provider_name] = {}
+                providers[provider_name]['default_model'] = default_model
+                logger.info(f"Updated {provider_name} default model: {default_model}")
+
+            # Auto-manage default models: ensure default model is in enabled models list
+            for provider_name, default_model in settings.default_models.items():
+                if default_model and provider_name in settings.selected_models:
+                    enabled_models = settings.selected_models[provider_name]
+                    if default_model not in enabled_models:
+                        if enabled_models:
+                            # Auto-select first enabled model as default
+                            new_default = enabled_models[0]
+                            providers[provider_name]['default_model'] = new_default
+                            settings.default_models[provider_name] = new_default
+                            logger.info(f"Auto-corrected {provider_name} default model from '{default_model}' to '{new_default}' (not in enabled models)")
+                        else:
+                            # No models enabled, clear default
+                            providers[provider_name]['default_model'] = ""
+                            settings.default_models[provider_name] = ""
+                            logger.info(f"Cleared {provider_name} default model (no models enabled)")
+
             # Auto-update assistant_defaults if current default model is not in enabled list
             if 'assistant_defaults' not in config:
                 config['assistant_defaults'] = {}
-            
+
             assistant_defaults = config['assistant_defaults']
             current_connector = assistant_defaults.get('connector')
             current_llm = assistant_defaults.get('llm')
-            
+
             # Check if current connector's default model is still valid
             if current_connector and current_connector in settings.selected_models:
                 enabled_models_for_connector = settings.selected_models[current_connector]
-                
+
                 # If current llm is not in the newly enabled models list
                 if current_llm and current_llm not in enabled_models_for_connector:
                     if enabled_models_for_connector:  # If there are models enabled
