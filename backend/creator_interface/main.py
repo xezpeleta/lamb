@@ -1324,7 +1324,7 @@ async def update_user_status_admin(
         
         # Prevent users from disabling themselves
         current_user = get_creator_user_from_token(auth_header)
-        if current_user and current_user.get('email') == user.get('email') and not enabled:
+        if current_user and current_user.get('email') == user.get('user_email') and not enabled:
             raise HTTPException(
                 status_code=403,
                 detail="You cannot disable your own account. Please ask another administrator to disable your account if needed."
@@ -1332,21 +1332,21 @@ async def update_user_status_admin(
         
         # Update user status in OWI auth system
         owi_manager = OwiUserManager()
-        if not owi_manager.update_user_status(user['email'], enabled):
+        if not owi_manager.update_user_status(user.get('user_email'), enabled):
             raise HTTPException(
                 status_code=500,
                 detail="Failed to update user status"
             )
         
         status_text = "enabled" if enabled else "disabled"
-        logger.info(f"Admin updated user {user['email']} (ID: {user_id}) status to {status_text}")
+        logger.info(f"Admin updated user {user.get('user_email')} (ID: {user_id}) status to {status_text}")
         
         return {
             "success": True,
             "message": f"User has been {status_text}",
             "data": {
                 "user_id": user_id,
-                "email": user['email'],
+                "email": user.get('user_email'),
                 "enabled": enabled
             }
         }
