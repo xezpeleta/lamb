@@ -41,6 +41,7 @@
     /** @type {any[]} */
     let orgUsers = $state([]);
     let isLoadingUsers = $state(false);
+    let usersLoaded = $state(false); // Track if users have been loaded at least once
     /** @type {string | null} */
     let usersError = $state(null);
 
@@ -398,6 +399,7 @@
             console.log('Users API Response:', response.data);
             orgUsers = response.data || [];
             console.log(`Fetched ${orgUsers.length} users`);
+            usersLoaded = true; // Mark as loaded even if empty
         } catch (err) {
             console.error('Error fetching users:', err);
             if (axios.isAxiosError(err) && err.response?.status === 403) {
@@ -410,6 +412,7 @@
                 usersError = 'An unknown error occurred while fetching users.';
             }
             orgUsers = [];
+            usersLoaded = true; // Mark as loaded even on error to prevent infinite loops
         } finally {
             isLoadingUsers = false;
         }
@@ -970,7 +973,7 @@
     $effect(() => {
         if (currentView === 'dashboard' && !dashboardData) {
             fetchDashboard();
-        } else if (currentView === 'users' && orgUsers.length === 0) {
+        } else if (currentView === 'users' && !usersLoaded) {
             fetchUsers();
         } else if (currentView === 'assistants' && !assistantsLoaded) {
             fetchAssistants();
