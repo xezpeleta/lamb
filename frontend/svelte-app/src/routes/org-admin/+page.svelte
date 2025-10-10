@@ -24,6 +24,7 @@
     /** @type {any[]} */
     let orgAssistants = $state([]);
     let isLoadingAssistants = $state(false);
+    let assistantsLoaded = $state(false); // Track if assistants have been loaded at least once
     /** @type {string | null} */
     let assistantsError = $state(null);
     let selectedAssistant = $state(null);
@@ -656,9 +657,11 @@
             
             const response = await axios.get(`${API_BASE}/org-admin/assistants`, { headers });
             orgAssistants = response.data.assistants || [];
+            assistantsLoaded = true; // Mark as loaded even if empty
         } catch (err) {
             console.error('Error fetching assistants:', err);
             assistantsError = err.response?.data?.detail || 'Failed to fetch assistants';
+            assistantsLoaded = true; // Mark as loaded even on error to prevent infinite loops
         } finally {
             isLoadingAssistants = false;
         }
@@ -969,7 +972,7 @@
             fetchDashboard();
         } else if (currentView === 'users' && orgUsers.length === 0) {
             fetchUsers();
-        } else if (currentView === 'assistants' && orgAssistants.length === 0) {
+        } else if (currentView === 'assistants' && !assistantsLoaded) {
             fetchAssistants();
         } else if (currentView === 'settings' && !signupSettings) {
             fetchSettings();
