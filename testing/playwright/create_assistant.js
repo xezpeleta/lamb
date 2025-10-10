@@ -42,7 +42,7 @@ const baseUrl = process.argv[2] || 'http://localhost:5173/';
 
     // ...existing code...
     // navigate to http://localhost:5173/assistants?view=create
-    await page.goto(baseUrl + "/assistants?view=create");
+    await page.goto(baseUrl + "assistants?view=create");
     await page.waitForLoadState("networkidle");
 
     // ...existing code...

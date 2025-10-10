@@ -38,7 +38,7 @@ const baseUrl = process.argv[2] || 'http://localhost:5173/';
     console.error('Failed to load session data:', err);
   }
 
-  await page.goto(baseUrl + '/knowledgebases');
+  await page.goto(baseUrl + 'knowledgebases');
 
   // "Create Knowledge Base" on the main page
   await page.getByRole('button', { name: /create knowledge base/i }).click();

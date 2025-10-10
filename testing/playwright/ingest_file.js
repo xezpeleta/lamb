@@ -79,7 +79,7 @@ function downloadPDF(url, dest) {
     }
 
     // Navigate to the knowledge base detail page
-    await page.goto(baseUrl + '/knowledgebases?view=detail&id=1');
+    await page.goto(baseUrl + 'knowledgebases?view=detail&id=1');
 
     // Click on the "Ingest Content" button/tab
     await page.getByRole('button', { name: 'Ingest Content' }).click();
