@@ -1594,6 +1594,80 @@ async def change_user_password(request: Request, user_id: int, password_data: Or
         logger.error(f"Error changing user password: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete(
+    "/org-admin/users/{user_id}",
+    tags=["Organization Admin - User Management"],
+    summary="Delete Organization User",
+    description="""Delete a user from the organization. Only accessible by organization admins.
+    
+    This permanently removes the user from both the LAMB database and the authentication system.
+    The user cannot be an organization admin/owner, and admins cannot delete themselves.
+
+Example Request:
+```bash
+curl -X DELETE 'http://localhost:8000/creator/admin/org-admin/users/123' \\
+-H 'Authorization: Bearer <org_admin_token>'
+```
+    """,
+    dependencies=[Depends(security)]
+)
+async def delete_organization_user(request: Request, user_id: int, org: Optional[str] = None):
+    """Delete a user from the organization"""
+    try:
+        # If org parameter is provided, get organization by slug
+        target_org_id = None
+        if org:
+            target_organization = db_manager.get_organization_by_slug(org)
+            if not target_organization:
+                raise HTTPException(status_code=404, detail=f"Organization '{org}' not found")
+            target_org_id = target_organization['id']
+        
+        admin_info = await verify_organization_admin_access(request, target_org_id)
+        org_id = admin_info['organization_id']
+        
+        # Verify user belongs to this organization
+        user = db_manager.get_creator_user_by_id(user_id)
+        if not user or user.get('organization_id') != org_id:
+            raise HTTPException(status_code=404, detail="User not found in this organization")
+        
+        user_email = user.get('user_email')
+        
+        # Prevent users from deleting themselves
+        current_user_email = admin_info.get('email')
+        if user_email == current_user_email:
+            raise HTTPException(
+                status_code=403, 
+                detail="You cannot delete your own account. Please ask another administrator to delete your account if needed."
+            )
+        
+        # Check if the user is an admin/owner of this organization
+        user_role = db_manager.get_user_organization_role(user_id, org_id)
+        if user_role in ['owner', 'admin']:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot delete an organization admin or owner. Please remove their admin privileges first."
+            )
+        
+        # Delete user from OWI auth system (if exists)
+        owi_manager = OwiUserManager()
+        owi_deleted = owi_manager.delete_user(user_email)
+        if not owi_deleted:
+            logger.warning(f"User {user_email} was not found in OWI auth system (may only exist in LAMB)")
+        
+        # Delete user from LAMB database
+        if not db_manager.delete_creator_user(user_id):
+            logger.error(f"Failed to delete user {user_email} from LAMB database")
+            raise HTTPException(status_code=500, detail="Failed to delete user from LAMB database")
+        
+        logger.info(f"Organization admin {current_user_email} deleted user {user_email} (ID: {user_id}) from organization {org_id}")
+        return {"message": f"User {user_email} has been permanently deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting organization user: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Organization Settings Management
 @router.get(
     "/org-admin/settings/signup", 

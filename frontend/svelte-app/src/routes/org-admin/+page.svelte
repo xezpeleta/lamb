@@ -72,6 +72,13 @@
     let changePasswordError = $state(null);
     let changePasswordSuccess = $state(false);
 
+    // Delete user modal state
+    let isDeleteUserModalOpen = $state(false);
+    let userToDelete = $state(null);
+    let isDeletingUser = $state(false);
+    /** @type {string | null} */
+    let deleteUserError = $state(null);
+
     // Settings state
     /** @type {any} */
     let signupSettings = $state({
@@ -439,11 +446,6 @@
         
         // Prevent users from disabling themselves
         if (userData && userData.email === user.email && !newStatus) {
-            alert("You cannot disable your own account. Please ask another administrator to disable your account if needed.");
-            return;
-        }
-        
-        if (!confirm(`Are you sure you want to ${action} ${user.name} (${user.email})?`)) {
             return;
         }
 
@@ -474,9 +476,6 @@
                 orgUsers = [...orgUsers]; // Trigger reactivity
             }
 
-            // Show success message (you could use a toast library here)
-            alert(`User ${user.name} has been ${newStatus ? 'enabled' : 'disabled'} successfully.`);
-
         } catch (err) {
             console.error(`Error ${action}ing user:`, err);
             
@@ -487,7 +486,72 @@
                 errorMessage = err.message;
             }
             
-            alert(`Error: ${errorMessage}`);
+            // Log error but don't show alert - could add a toast notification here
+            console.error(errorMessage);
+        }
+    }
+
+    // User delete function
+    function openDeleteUserModal(user) {
+        // Prevent users from deleting themselves
+        if (userData && userData.email === user.email) {
+            return;
+        }
+        
+        userToDelete = user;
+        deleteUserError = null;
+        isDeleteUserModalOpen = true;
+    }
+
+    function closeDeleteUserModal() {
+        isDeleteUserModalOpen = false;
+        userToDelete = null;
+        deleteUserError = null;
+        isDeletingUser = false;
+    }
+
+    async function confirmDeleteUser() {
+        if (!userToDelete) return;
+
+        isDeletingUser = true;
+        deleteUserError = null;
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error('Authentication token not found. Please log in again.');
+            }
+
+            const apiUrl = getApiUrl(`/org-admin/users/${userToDelete.id}`);
+            console.log(`Deleting user ${userToDelete.email} at: ${apiUrl}`);
+
+            const response = await axios.delete(apiUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            console.log('User delete response:', response.data);
+
+            // Remove the user from the local list
+            orgUsers = orgUsers.filter(u => u.id !== userToDelete.id);
+
+            // Close modal
+            closeDeleteUserModal();
+
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            
+            let errorMessage = 'Failed to delete user.';
+            if (axios.isAxiosError(err) && err.response?.data?.detail) {
+                errorMessage = err.response.data.detail;
+            } else if (err instanceof Error) {
+                errorMessage = err.message;
+            }
+            
+            deleteUserError = errorMessage;
+        } finally {
+            isDeletingUser = false;
         }
     }
 
@@ -1401,8 +1465,8 @@
                                                 </button>
                                                 <button
                                                     class={userData && userData.email === user.email && user.enabled 
-                                                        ? "text-gray-400 cursor-not-allowed" 
-                                                        : "hover:opacity-80"}
+                                                        ? "text-gray-400 cursor-not-allowed mr-3" 
+                                                        : "hover:opacity-80 mr-3"}
                                                     style={userData && userData.email === user.email && user.enabled ? "" : "color: #2271b3;"}
                                                     title={userData && userData.email === user.email && user.enabled 
                                                         ? "You cannot disable your own account" 
@@ -1422,6 +1486,23 @@
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
                                                     {/if}
+                                                </button>
+                                                <button
+                                                    class={userData && userData.email === user.email 
+                                                        ? "text-gray-400 cursor-not-allowed" 
+                                                        : "text-red-600 hover:text-red-800"}
+                                                    title={userData && userData.email === user.email 
+                                                        ? "You cannot delete your own account" 
+                                                        : 'Delete User'}
+                                                    aria-label={userData && userData.email === user.email 
+                                                        ? "You cannot delete your own account" 
+                                                        : 'Delete User'}
+                                                    onclick={() => openDeleteUserModal(user)}
+                                                    disabled={userData && userData.email === user.email}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                    </svg>
                                                 </button>
                                             </td>
                                         </tr>
@@ -2140,6 +2221,71 @@
                         </div>
                     </form>
                 {/if}
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Delete User Modal -->
+{#if isDeleteUserModalOpen && userToDelete}
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <!-- Warning Icon -->
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                
+                <!-- Modal Header -->
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">
+                    Delete User
+                </h3>
+                
+                <!-- Modal Content -->
+                <div class="mt-4 text-center">
+                    <p class="text-sm text-gray-600">
+                        Are you sure you want to permanently delete
+                    </p>
+                    <p class="text-base font-semibold text-gray-900 mt-2">
+                        {userToDelete.name}
+                    </p>
+                    <p class="text-sm text-gray-600 mt-1">
+                        ({userToDelete.email})
+                    </p>
+                    <div class="mt-4 bg-red-50 border-l-4 border-red-400 p-3 rounded">
+                        <p class="text-sm text-red-800">
+                            <strong>Warning:</strong> This action cannot be undone. The user will be permanently removed from the system and will not be able to log in.
+                        </p>
+                    </div>
+                </div>
+
+                {#if deleteUserError}
+                    <div class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <span class="block sm:inline">{deleteUserError}</span>
+                    </div>
+                {/if}
+                
+                <!-- Modal Actions -->
+                <div class="flex items-center justify-between mt-6 gap-3">
+                    <button 
+                        type="button" 
+                        onclick={closeDeleteUserModal}
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50" 
+                        disabled={isDeletingUser}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button" 
+                        onclick={confirmDeleteUser}
+                        class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50" 
+                        disabled={isDeletingUser}
+                    >
+                        {isDeletingUser ? 'Deleting...' : 'Delete User'}
+                    </button>
+                </div>
             </div>
         </div>
     </div>

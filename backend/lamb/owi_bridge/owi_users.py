@@ -373,6 +373,68 @@ class OwiUserManager:
             logger.error(f"Error getting user status: {e}")
             return None
 
+    def delete_user(self, email: str) -> bool:
+        """
+        Delete a user from the database (user and auth tables)
+
+        Args:
+            email (str): User's email
+
+        Returns:
+            bool: True if user was deleted successfully or didn't exist, False on error
+        """
+        try:
+            # Check if user exists in OWI database
+            user = self.db.get_user_by_email(email)
+            if not user:
+                logger.warning(f"User with email {email} not found in OWI database (may only exist in LAMB)")
+                # Return True since there's nothing to delete in OWI - the user may only exist in LAMB
+                return True
+
+            user_id = user.get('id')
+            
+            # Prevent deletion of admin user (user ID 1)
+            if user_id == "1":
+                logger.error(f"Cannot delete admin user (ID 1)")
+                return False
+
+            # Delete from both auth and user tables
+            conn = self.db.get_connection()
+            if not conn:
+                logger.error("Failed to connect to database")
+                return False
+
+            try:
+                cursor = conn.cursor()
+                
+                # Delete from auth table first (may or may not exist)
+                cursor.execute("DELETE FROM auth WHERE email = ?", (email,))
+                auth_deleted = cursor.rowcount
+                
+                # Delete from user table
+                cursor.execute("DELETE FROM user WHERE id = ?", (user_id,))
+                user_deleted = cursor.rowcount
+                
+                conn.commit()
+
+                if user_deleted > 0:
+                    logger.info(f"User {email} has been deleted successfully from OWI (auth: {auth_deleted > 0}, user: {user_deleted > 0})")
+                    return True
+                else:
+                    logger.warning(f"User {email} record was not deleted (may have already been removed)")
+                    return True  # Return True anyway since the goal is achieved
+
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Error deleting user: {e}")
+                return False
+            finally:
+                conn.close()
+
+        except Exception as e:
+            logger.error(f"Unexpected error deleting user: {e}")
+            return False
+
     def update_user_role(self, user_id: str, new_role: str) -> bool:
         """
         Update a user's role in the database

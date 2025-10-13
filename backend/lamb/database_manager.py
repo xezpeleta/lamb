@@ -1548,6 +1548,43 @@ class LambDatabaseManager:
                 connection.close()
                 logging.debug("Database connection closed")
 
+    def delete_creator_user(self, user_id: int) -> bool:
+        """
+        Delete a creator user from the LAMB database
+
+        Args:
+            user_id (int): The user ID to delete
+
+        Returns:
+            bool: True if user was deleted successfully, False otherwise
+        """
+        connection = self.get_connection()
+        if not connection:
+            logging.error("Failed to get database connection")
+            return False
+            
+        try:
+            with connection:
+                cursor = connection.cursor()
+                cursor.execute(
+                    f"DELETE FROM {self.table_prefix}Creator_users WHERE id = ?", 
+                    (user_id,)
+                )
+                
+                if cursor.rowcount > 0:
+                    logging.info(f"Creator user with id {user_id} deleted successfully from LAMB database")
+                    return True
+                else:
+                    logging.warning(f"No creator user found with id {user_id}")
+                    return False
+                    
+        except Exception as e:
+            logging.error(f"Error deleting creator user: {e}")
+            return False
+        finally:
+            if connection:
+                connection.close()
+
     def create_lti_user(self, lti_user: LTIUser):
         connection = self.get_connection()
         if connection:
