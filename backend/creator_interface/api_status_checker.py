@@ -110,37 +110,84 @@ class APIStatusChecker:
             }
         
         try:
-            # Test API connectivity by listing models
             async with aiohttp.ClientSession() as session:
                 headers = {
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 }
                 
-                async with session.get(
-                    f"{base_url}/models",
+                # First, get the list of available models
+                models = []
+                try:
+                    async with session.get(
+                        f"{base_url}/models",
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=10)
+                    ) as models_response:
+                        if models_response.status == 200:
+                            data = await models_response.json()
+                            models = [model["id"] for model in data.get("data", [])]
+                except Exception as e:
+                    logger.warning(f"Failed to fetch models list: {e}")
+                
+                # Now test streaming capability with a simple request
+                headers["Accept"] = "text/event-stream"
+                test_payload = {
+                    "model": "gpt-5",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "Hi"
+                        }
+                    ],
+                    "stream": True
+                }
+                
+                async with session.post(
+                    f"{base_url}/chat/completions",
                     headers=headers,
+                    json=test_payload,
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
                     
                     if response.status == 200:
-                        data = await response.json()
-                        models = [model["id"] for model in data.get("data", [])]
-                        
+                        # Successfully initiated stream
                         return {
                             "provider": "openai",
                             "status": "working",
                             "models": models,
                             "model_count": len(models),
-                            "api_base": base_url
+                            "api_base": base_url,
+                            "streaming": "enabled"
                         }
                     else:
                         error_text = await response.text()
+                        try:
+                            error_json = await response.json()
+                            error_code = error_json.get("error", {}).get("code")
+                            error_message = error_json.get("error", {}).get("message", error_text)
+                            
+                            # Check for the specific streaming verification error
+                            if error_code == "unsupported_value" and "stream" in error_json.get("error", {}).get("param", ""):
+                                return {
+                                    "provider": "openai",
+                                    "status": "error",
+                                    "error": "Organization not verified for streaming",
+                                    "error_details": error_message,
+                                    "models": models,
+                                    "model_count": len(models),
+                                    "api_base": base_url,
+                                    "streaming": "disabled"
+                                }
+                        except:
+                            pass
+                        
                         return {
                             "provider": "openai",
                             "status": "error",
                             "error": f"HTTP {response.status}: {error_text}",
-                            "models": [],
+                            "models": models,
+                            "model_count": len(models),
                             "api_base": base_url
                         }
                         
