@@ -27,10 +27,14 @@ const url = process.argv[2] || 'http://localhost:5173/';
     if (!authData.localStorage.userToken) {
       console.log('Not authenticated, performing login...');
       
+      // Get credentials from environment variables or use defaults
+      const email = process.env.LOGIN_EMAIL || 'admin@owi.com';
+      const password = process.env.LOGIN_PASSWORD || 'admin';
+      
       // Wait for login form to be available
       await page.waitForSelector('#email');
-      await page.fill('#email', 'admin@owi.com');
-      await page.fill('#password', 'admin');
+      await page.fill('#email', email);
+      await page.fill('#password', password);
       await page.click('form > button');
       
       // Wait for navigation or successful login
