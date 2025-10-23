@@ -222,7 +222,12 @@
 	function resetFormFieldsToDefaults() {
 		const defaults = get(assistantConfigStore).configDefaults?.config || {};
 		system_prompt = defaults.system_prompt || '';
-		prompt_template = defaults.prompt_template || '';
+		// Always provide a default prompt template for new assistants
+		// Use config default, or fallback to a clear English template
+		const defaultPromptTemplate = defaults.prompt_template || 
+			`User question:\n{user_input}\n\nRelevant context:\n{context}\n\n- Please provide a clear and helpful answer based only on the context above.\n- If the context does not contain enough information, say so clearly.\n- Always respond in the same language used in the user question`;
+		prompt_template = defaultPromptTemplate;
+		console.log('[AssistantForm] Setting default prompt_template for CREATE mode:', prompt_template.substring(0, 50) + '...');
 		RAG_Top_k = parseInt(defaults.RAG_Top_k || '3', 10) || 3;
 		selectedPromptProcessor = defaults.prompt_processor || (promptProcessors.length > 0 ? promptProcessors[0] : '');
 		selectedConnector = defaults.connector || (connectorsList.length > 0 ? connectorsList[0] : '');

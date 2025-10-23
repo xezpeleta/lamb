@@ -46,13 +46,14 @@ function getFallbackDefaults() {
     const defaults = {
       config: { // Correctly nested under 'config' key
         // "lamb_helper_assistant": "lamb_assistant.1", // Remove non-defined property
-        system_prompt: "You are a wise surfer dude and a helpful teaching assistant that uses Retrieval-Augmented Generation (RAG) to improve your answers.",
-        prompt_template: "You are a wise surfer dude and a helpful teaching assistant that uses Retrieval-Augmented Generation (RAG) to improve your answers.\nThis is the user input: {user_input}\nThis is the context: {context}\nNow answer the question:",
+        system_prompt: "You are a helpful teaching assistant that uses Retrieval-Augmented Generation (RAG) to improve your answers.",
+        prompt_template: "User question:\n{user_input}\n\nRelevant context:\n{context}\n\n- Please provide a clear and helpful answer based only on the context above.\n- If the context does not contain enough information, say so clearly.\n- Always respond in the same language used in the user question",
         prompt_processor: "simple_augment",
         connector: "openai",
         llm: "gpt-4o-mini",
         rag_processor: "no_rag", // Use consistent key format
-        RAG_Top_k: "3"
+        RAG_Top_k: "3",
+        rag_placeholders: ["{context}", "{user_input}"]
       }
     };
     // Cast to the defined type to help type checker
