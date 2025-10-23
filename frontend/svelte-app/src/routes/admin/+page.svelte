@@ -241,7 +241,7 @@
             // For global admin, we need to pass the org parameter to target the system organization
             // The system organization slug is 'lamb'
             const systemOrgSlug = 'lamb';
-            const apiUrl = getApiUrl(`/org-admin/users/${userToDelete.id}?org=${systemOrgSlug}`);
+            const apiUrl = getApiUrl(`/admin/org-admin/users/${userToDelete.id}?org=${systemOrgSlug}`);
             console.log(`Deleting user ${userToDelete.email} at: ${apiUrl}`);
 
             const response = await axios.delete(apiUrl, {
