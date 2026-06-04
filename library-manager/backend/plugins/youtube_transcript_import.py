@@ -6,12 +6,12 @@ timestamped sections.
 """
 
 import logging
+import os
 import re
+import tempfile
 import time
 from typing import Any
 from urllib.parse import parse_qs, urlparse
-
-import requests
 
 from plugins.base import (
     ImportResult,
@@ -148,7 +148,9 @@ def _fetch_transcript(
 ) -> tuple[list[dict[str, Any]], str]:
     """Download subtitles for a YouTube video via yt-dlp.
 
-    Prefers manual subtitles, falls back to auto-captions.
+    Lets yt-dlp handle the download internally (including impersonation
+    and retry logic) to avoid YouTube rate-limiting. Prefers manual
+    subtitles, falls back to auto-captions.
 
     Args:
         video_id: YouTube video ID (11 characters).
@@ -162,50 +164,58 @@ def _fetch_transcript(
 
     url = f"https://www.youtube.com/watch?v={video_id}"
 
-    ydl_opts: dict[str, Any] = {
-        "skip_download": True,
-        "writesubtitles": True,
-        "writeautomaticsub": True,
-        "subtitleslangs": [language],
-        "subtitlesformat": "srt",
-        "quiet": True,
-        "no_warnings": True,
-    }
-    if proxy_url:
-        ydl_opts["proxy"] = proxy_url
+    with tempfile.TemporaryDirectory() as tmpdir:
+        ydl_opts: dict[str, Any] = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": [language],
+            "subtitlesformat": "srt",
+            "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
+            "quiet": True,
+            "no_warnings": True,
+        }
+        if proxy_url:
+            ydl_opts["proxy"] = proxy_url
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-    except Exception as exc:
-        logger.error("yt-dlp failed for %s: %s", video_id, exc)
-        raise RuntimeError(
-            f"Failed to fetch video info for {video_id}: {exc}"
-        ) from exc
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+        except Exception as exc:
+            logger.error("yt-dlp failed for %s: %s", video_id, exc)
+            raise RuntimeError(
+                f"Failed to fetch video info for {video_id}: {exc}"
+            ) from exc
 
-    # Try manual subtitles first, then auto-captions.
-    for sub_key, source_label in [
-        ("subtitles", "manual"),
-        ("automatic_captions", "auto"),
-    ]:
-        subs = (info or {}).get(sub_key, {})
-        lang_subs = subs.get(language, [])
-        for sub_entry in lang_subs:
-            sub_url = sub_entry.get("url", "")
-            if not sub_url:
+        # yt-dlp handles subtitle download internally and populates
+        # requested_subtitles with filepath on success.
+        requested = (info or {}).get("requested_subtitles") or {}
+
+        # Determine source: manual subtitles appear in 'subtitles',
+        # auto-captions in 'automatic_captions'.
+        manual_keys = set((info or {}).get("subtitles") or {})
+
+        for lang_key, sub_info in requested.items():
+            filepath = sub_info.get("filepath", "")
+            if not filepath or not os.path.isfile(filepath):
                 continue
             try:
-                resp = requests.get(sub_url, timeout=30)
-                resp.raise_for_status()
-                pieces = _parse_srt_content(resp.text)
+                with open(filepath, encoding="utf-8") as fh:
+                    srt_text = fh.read()
+                pieces = _parse_srt_content(srt_text)
                 if pieces:
+                    source_label = "manual" if lang_key in manual_keys else "auto"
                     return pieces, source_label
             except Exception:
-                logger.warning("Failed to fetch subtitle from %s", sub_url[:80])
+                logger.warning(
+                    "Failed to read subtitle file %s", filepath
+                )
                 continue
 
-    logger.warning("No subtitles found for %s in language '%s'", video_id, language)
-    return [], "none"
+        logger.warning(
+            "No subtitles found for %s in language '%s'", video_id, language
+        )
+        return [], "none"
 
 
 # ---------------------------------------------------------------------------

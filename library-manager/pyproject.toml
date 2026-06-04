@@ -17,9 +17,6 @@ dependencies = [
 
     # File upload handling
     "python-multipart>=0.0.9",
-
-    # HTTP client (used by YouTube plugin)
-    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]
